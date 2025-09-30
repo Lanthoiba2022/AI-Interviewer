@@ -1,0 +1,331 @@
+import { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { setCandidate, setMissingFields, setStage, addChatMessage, startInterview } from '@/store/slices/interviewSlice';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Upload, FileText, AlertCircle, Loader2, Brain, Play } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { aiService } from '@/services/aiService';
+import { RootState } from '@/store/store';
+
+const ResumeUpload = () => {
+  const dispatch = useDispatch();
+  const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const { currentCandidate, stage } = useSelector((state: RootState) => state.interview);
+
+  const extractTextFromPDF = async (file: File): Promise<string> => {
+    // For now, we'll use AI analysis directly instead of text extraction
+    // In a real implementation, you'd use pdf-parse here
+    return `PDF file: ${file.name}`;
+  };
+
+  const extractTextFromDocx = async (file: File): Promise<string> => {
+    // For now, we'll use AI analysis directly instead of text extraction
+    // In a real implementation, you'd use mammoth here
+    return `DOCX file: ${file.name}`;
+  };
+
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+
+    if (!file.type.includes('pdf') && !file.type.includes('document')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a PDF or DOCX file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      // Wait for Puter to be ready
+      await aiService.waitForPuter();
+
+      dispatch(addChatMessage({
+        type: 'system',
+        content: `Resume uploaded: ${file.name}. Analyzing with AI...`,
+      }));
+
+      // Use AI service to analyze resume
+      const analysis = await aiService.analyzeResume(file);
+
+      const candidateInfo = {
+        name: analysis.name || '',
+        email: analysis.email || '',
+        phone: analysis.phone || '',
+      };
+
+      const missingFields = [];
+      if (!candidateInfo.name) missingFields.push('name');
+      if (!candidateInfo.email) missingFields.push('email');
+      if (!candidateInfo.phone) missingFields.push('phone');
+
+      dispatch(setCandidate({
+        id: Date.now().toString(),
+        ...candidateInfo,
+        resumeText: analysis.summary,
+        resumeFileName: file.name,
+        resumeScore: analysis.score,
+        resumeStrengths: analysis.strengths,
+        resumeWeaknesses: analysis.weaknesses,
+      }));
+
+      dispatch(addChatMessage({
+        type: 'ai',
+        content: `Resume analysis complete! I found ${analysis.strengths.length} key strengths and identified areas for improvement. Resume score: ${analysis.score}/100.`,
+      }));
+
+      if (missingFields.length > 0) {
+        dispatch(setMissingFields(missingFields));
+        dispatch(setStage('collecting-info'));
+        dispatch(addChatMessage({
+          type: 'ai',
+          content: `I need a few more details to complete your profile. Let me ask you for the missing information.`,
+        }));
+      } else {
+        // Start the interview immediately
+        dispatch(setStage('interview'));
+        dispatch(addChatMessage({
+          type: 'ai',
+          content: `Perfect! I have all your information. Let's begin your interview for the Full Stack Developer position. I'll generate personalized questions based on your resume and we'll start with the first question.`,
+        }));
+      }
+
+      toast({
+        title: "Resume analyzed successfully",
+        description: `AI analysis complete. Score: ${analysis.score}/100`,
+      });
+    } catch (error) {
+      console.error('Resume analysis error:', error);
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to analyze the resume. Please try again.";
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to analyze resume')) {
+          errorMessage = "AI analysis failed. Please ensure your resume is readable and try again.";
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = "Network error. Please check your connection and try again.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      toast({
+        title: "Analysis failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileUpload(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleStartInterview = () => {
+    dispatch(startInterview());
+    dispatch(addChatMessage({
+      type: 'ai',
+      content: `Great! Let's begin your interview. I'll generate personalized questions based on your resume and we'll start with the first question.`,
+    }));
+  };
+
+  // Show resume analysis results if available
+  if (currentCandidate && stage === 'interview') {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="text-center space-y-2">
+          <h2 className="text-3xl font-bold text-foreground">Resume Analysis Complete!</h2>
+          <p className="text-muted-foreground text-lg">
+            Ready to start your AI-powered interview
+          </p>
+        </div>
+
+        <Card className="bg-accent/50">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <FileText className="h-5 w-5" />
+              <span>Analysis Results</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Name</p>
+                <p className="text-lg">{currentCandidate.name || 'Not found'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Email</p>
+                <p className="text-lg">{currentCandidate.email || 'Not found'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Phone</p>
+                <p className="text-lg">{currentCandidate.phone || 'Not found'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Resume Score</p>
+                <p className="text-lg font-bold text-primary">{currentCandidate.resumeScore}/100</p>
+              </div>
+            </div>
+            
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-2">Key Strengths</p>
+              <div className="flex flex-wrap gap-2">
+                {currentCandidate.resumeStrengths?.map((strength, index) => (
+                  <span key={index} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                    {strength}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-2">Areas for Improvement</p>
+              <div className="flex flex-wrap gap-2">
+                {currentCandidate.resumeWeaknesses?.map((weakness, index) => (
+                  <span key={index} className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                    {weakness}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6 text-center space-y-4">
+            <h3 className="text-xl font-semibold">Ready to Begin Your Interview?</h3>
+            <p className="text-muted-foreground">
+              I'll generate 6 personalized questions based on your resume. The interview will include:
+            </p>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              <li>• 2 Easy questions (20 seconds each)</li>
+              <li>• 2 Medium questions (60 seconds each)</li>
+              <li>• 2 Hard questions (120 seconds each)</li>
+              <li>• Voice input support with real-time transcription</li>
+              <li>• AI-powered evaluation and feedback</li>
+            </ul>
+            
+            <Button 
+              onClick={handleStartInterview}
+              size="lg"
+              className="w-full"
+            >
+              <Play className="h-5 w-5 mr-2" />
+              Start Interview
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div className="text-center space-y-2">
+        <h2 className="text-3xl font-bold text-foreground">Welcome to Crisp</h2>
+        <p className="text-muted-foreground text-lg">
+          AI-Powered Interview Assistant for Full Stack Developers
+        </p>
+      </div>
+
+      <Card className="border-2 border-dashed border-primary/20">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <FileText className="h-5 w-5" />
+            <span>Upload Your Resume</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div
+            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              dragActive 
+                ? 'border-primary bg-primary/5' 
+                : 'border-border hover:border-primary/50'
+            }`}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+          >
+            <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
+              Drop your resume here or click to browse
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Supports PDF and DOCX files (max 10MB)
+            </p>
+            
+            <Input
+              type="file"
+              accept=".pdf,.docx,.doc"
+              onChange={(e) => e.target.files && handleFileUpload(e.target.files[0])}
+              className="hidden"
+              id="resume-upload"
+              disabled={isProcessing}
+            />
+            
+            <Button 
+              asChild 
+              disabled={isProcessing}
+              className="min-w-32"
+            >
+              <label htmlFor="resume-upload" className="cursor-pointer">
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    AI Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="h-4 w-4 mr-2" />
+                    Choose File
+                  </>
+                )}
+              </label>
+            </Button>
+          </div>
+          
+          <div className="mt-4 p-4 bg-accent/50 rounded-lg">
+            <div className="flex items-start space-x-2">
+              <AlertCircle className="h-4 w-4 text-accent-foreground mt-0.5" />
+              <div className="text-sm text-accent-foreground">
+                <p className="font-medium">What happens next:</p>
+                <ul className="mt-1 space-y-1 text-xs">
+                  <li>• We'll extract your name, email, and phone number</li>
+                  <li>• Ask for any missing information</li>
+                  <li>• Start your AI-powered interview (6 questions total)</li>
+                  <li>• Provide real-time scoring and feedback</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default ResumeUpload;
