@@ -218,6 +218,28 @@ const InterviewQuestion = () => {
           for (let i = 0; i < questions.length; i++) {
             const q = questions[i];
             try {
+              // Rule-based penalty for blank / "I don't know" style answers before AI call
+              const rawAns = (q.answer || '').trim().toLowerCase();
+              const isNoAnswer = rawAns.length === 0;
+              const isIDK = /^(i don['’]t know|dont know|no idea|not sure|skip | pass | no comment)$/i.test(rawAns) ||
+                rawAns.includes("don't know") || rawAns.includes('dont know') || rawAns.includes('no idea');
+
+              if (isNoAnswer || isIDK) {
+                const penaltyScore = 5; // hard cap for no/IDK answers
+                let aiAnswerText = '';
+                try {
+                  // Still fetch a concise correct answer for learning
+                  const evalForAnswer = await aiService.evaluateAnswer(q.text, q.answer || '', q.difficulty);
+                  aiAnswerText = evalForAnswer.conciseAnswer || '';
+                  if (aiAnswerText) {
+                    dispatch(setQuestionAIAnswer({ questionIndex: i, aiAnswer: aiAnswerText }));
+                  }
+                } catch {}
+                evaluations.push({ score: penaltyScore, feedback: isNoAnswer ? 'No answer provided.' : 'Candidate indicated they do not know the answer.', aiAnswer: aiAnswerText });
+                dispatch(setQuestionScore({ questionIndex: i, score: penaltyScore }));
+                continue;
+              }
+
               const evalResult = await aiService.evaluateAnswer(q.text, q.answer || '', q.difficulty);
               const conciseAIAnswer = evalResult.conciseAnswer || '';
               evaluations.push({ score: evalResult.score, feedback: evalResult.feedback, aiAnswer: conciseAIAnswer });
@@ -226,8 +248,9 @@ const InterviewQuestion = () => {
                 dispatch(setQuestionAIAnswer({ questionIndex: i, aiAnswer: conciseAIAnswer }));
               }
             } catch (e) {
-              const fallback = Math.floor(Math.random() * 40) + 60;
-              evaluations.push({ score: fallback, feedback: 'Feedback unavailable.', aiAnswer: '' });
+              // Conservative fallback
+              const fallback = 0;
+              evaluations.push({ score: fallback, feedback: 'Evaluation unavailable.', aiAnswer: '' });
               dispatch(setQuestionScore({ questionIndex: i, score: fallback }));
             }
           }
@@ -332,6 +355,26 @@ const InterviewQuestion = () => {
           for (let i = 0; i < questions.length; i++) {
             const q = questions[i];
             try {
+              const rawAns = (q.answer || '').trim().toLowerCase();
+              const isNoAnswer = rawAns.length === 0;
+              const isIDK = /^(i don['’]t know|dont know|no idea|not sure|skip| pass | no comment)$/i.test(rawAns) ||
+                rawAns.includes("don't know") || rawAns.includes('dont know') || rawAns.includes('no idea');
+
+              if (isNoAnswer || isIDK) {
+                const penaltyScore = 5;
+                let aiAnswerText = '';
+                try {
+                  const evalForAnswer = await aiService.evaluateAnswer(q.text, q.answer || '', q.difficulty);
+                  aiAnswerText = evalForAnswer.conciseAnswer || '';
+                  if (aiAnswerText) {
+                    dispatch(setQuestionAIAnswer({ questionIndex: i, aiAnswer: aiAnswerText }));
+                  }
+                } catch {}
+                evaluations.push({ score: penaltyScore, feedback: isNoAnswer ? 'No answer provided.' : 'Candidate indicated they do not know the answer.', aiAnswer: aiAnswerText });
+                dispatch(setQuestionScore({ questionIndex: i, score: penaltyScore }));
+                continue;
+              }
+
               const evalResult = await aiService.evaluateAnswer(q.text, q.answer || '', q.difficulty);
               const conciseAIAnswer = evalResult.conciseAnswer || '';
               evaluations.push({ score: evalResult.score, feedback: evalResult.feedback, aiAnswer: conciseAIAnswer });
@@ -340,8 +383,8 @@ const InterviewQuestion = () => {
                 dispatch(setQuestionAIAnswer({ questionIndex: i, aiAnswer: conciseAIAnswer }));
               }
             } catch (e) {
-              const fallback = Math.floor(Math.random() * 40) + 60;
-              evaluations.push({ score: fallback, feedback: 'Feedback unavailable.', aiAnswer: '' });
+              const fallback = 0;
+              evaluations.push({ score: fallback, feedback: 'Evaluation unavailable.', aiAnswer: '' });
               dispatch(setQuestionScore({ questionIndex: i, score: fallback }));
             }
           }
