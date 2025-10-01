@@ -83,6 +83,17 @@ const InterviewerTab = () => {
   };
 
   const getProgressPercentage = (candidate: InProgressCandidate) => {
+    // Prefer real interview progress (answered questions) when available
+    if (candidate.questions && candidate.questions.length > 0) {
+      const answered = candidate.questions.filter(q => (q.answer || '').trim().length > 0).length;
+      const total = Math.max(candidate.questions.length, 1);
+      return (answered / total) * 100;
+    }
+    // If in interview stage but no questions/answers yet, show 0% for consistency
+    if ((candidate as any).stage === 'interview') {
+      return 0;
+    }
+    // Fallback to step-based progress before interview starts
     const steps = [
       candidate.progress.resumeUploaded,
       candidate.progress.infoCollected,
@@ -130,7 +141,7 @@ const InterviewerTab = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-foreground">Candidate Dashboard</h2>
+        <h2 className="text-2xl font-bold text-foreground">Candidates Information</h2>
         <div className="flex items-center space-x-4">
           <Badge variant="secondary" className="text-lg px-3 py-1">
             {completedList.length} Completed
@@ -280,8 +291,8 @@ const InterviewerTab = () => {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="space-y-3">
+                  <CardContent className="pt-0 min-h-[240px] flex flex-col">
+                    <div className="space-y-10 flex-1">
                       {/* Progress Bar */}
                       <div>
                         <div className="flex justify-between text-sm mb-1">
@@ -291,41 +302,56 @@ const InterviewerTab = () => {
                         <Progress value={getProgressPercentage(candidate)} className="h-2" />
                       </div>
 
-                      {/* Progress Steps */}
-                      <div className="grid grid-cols-4 gap-2 text-xs">
-                        <div className={`text-center p-2 rounded ${candidate.progress.resumeUploaded ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
-                          <FileText className={`h-4 w-4 mx-auto mb-1 ${candidate.progress.resumeUploaded ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`} />
-                          <p>Resume</p>
-                        </div>
-                        <div className={`text-center p-2 rounded ${candidate.progress.infoCollected ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
-                          <User className={`h-4 w-4 mx-auto mb-1 ${candidate.progress.infoCollected ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`} />
-                          <p>Info</p>
-                        </div>
-                        <div className={`text-center p-2 rounded ${candidate.progress.questionsGenerated ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
-                          <MessageSquare className={`h-4 w-4 mx-auto mb-1 ${candidate.progress.questionsGenerated ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`} />
-                          <p>Questions</p>
-                        </div>
-                        <div className={`text-center p-2 rounded ${candidate.progress.interviewStarted ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
-                          <Play className={`h-4 w-4 mx-auto mb-1 ${candidate.progress.interviewStarted ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`} />
-                          <p>Interview</p>
-                        </div>
-                      </div>
+                      {/* Compact timeline (consistent with WelcomeBack) */}
+                      {(() => {
+                        const totalQ = candidate.questions?.length || 0;
+                        const answeredQ = totalQ > 0 ? candidate.questions.filter(q => (q.answer || '').trim().length > 0).length : 0;
+                        const steps = [
+                          { done: !!candidate.progress.resumeUploaded, Icon: FileText, label: 'Resume' },
+                          { done: !!candidate.progress.infoCollected, Icon: User, label: 'Info' },
+                          { 
+                            done: !!candidate.progress.questionsGenerated || totalQ > 0, 
+                            Icon: MessageSquare, 
+                            label: totalQ > 0 ? `${answeredQ}/${totalQ} questions` : (candidate.progress.questionsGenerated ? 'Questions Ready' : 'Questions')
+                          },
+                          { done: !!candidate.progress.interviewStarted, Icon: Play, label: 'Interview' },
+                        ];
+                        return (
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            {steps.map((s, idx) => (
+                              <div key={`step-${idx}`} className="flex-1 min-w-[120px] flex items-center">
+                                {idx > 0 && (
+                                  <div className={`h-0.5 w-2 sm:w-4 md:w-6 ${steps[idx-1].done ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-700'}`}></div>
+                                )}
+                                <div className={`flex items-center gap-2 px-2 py-1.5 rounded-full border shadow-sm ${s.done ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
+                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center ${s.done ? 'bg-green-100 dark:bg-green-800/60' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                                    <s.Icon className={`h-3.5 w-3.5 ${s.done ? 'text-green-700 dark:text-green-300' : 'text-gray-600 dark:text-gray-300'}`} />
+                                  </div>
+                                  <span className="text-xs font-medium">{s.label}</span>
+                                </div>
+                                {idx < steps.length - 1 && (
+                                  <div className={`h-0.5 w-2 sm:w-4 md:w-6 ${s.done ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-700'}`}></div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
 
                       {/* Interview Details */}
                       {candidate.questions.length > 0 && (
-                        <div className="flex items-center justify-between text-sm text-muted-foreground">
-                          <span>Question {candidate.currentQuestionIndex + 1} of {candidate.questions.length}</span>
-                          <span>Started {formatTimeAgo(candidate.startedAt)}</span>
+                        <div className="flex items-center justify-end text-sm">
+                          <span className="text-muted-foreground">Started {formatTimeAgo(candidate.startedAt)}</span>
                         </div>
                       )}
 
                       {/* Action Button */}
-                      <div className="pt-2">
+                    </div>
+                    <div className="mt-3">
                         <Button size="sm" className="w-full">
                           <Play className="h-4 w-4 mr-2" />
                           Resume Interview
                         </Button>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
