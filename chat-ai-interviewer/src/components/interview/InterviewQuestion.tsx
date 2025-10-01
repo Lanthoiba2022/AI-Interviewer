@@ -306,7 +306,7 @@ const InterviewQuestion = () => {
 
           dispatch(addChatMessage({
             type: 'ai',
-            content: `Interview completed! Your final score is ${totalScore}%. ${summary}`,
+            content: `Interview completed! Your final score is ${weightedFinalErr}%. ${summary}`,
           }));
 
           // Ensure stage is set to completed even on error
@@ -431,7 +431,7 @@ const InterviewQuestion = () => {
           dispatch(setFinalResults({ score: weightedFinal2Err, summary }));
           dispatch(addChatMessage({
             type: 'ai',
-            content: `Interview completed! Your final score is ${totalScore}%. ${summary}`,
+            content: `Interview completed! Your final score is ${weightedFinal2Err}%. ${summary}`,
           }));
           dispatch(setStage('completed'));
           setIsEvaluating(false);
