@@ -37,9 +37,8 @@ export class TTSService extends BaseAIService {
       return audio;
     } catch (error) {
       console.error('TTS error:', error);
-      // Return a minimal playable audio element to avoid breaking the flow
-      const fallback = new Audio();
-      return fallback as HTMLAudioElement;
+      // Return null to indicate TTS failure
+      return null;
     }
   }
 }
