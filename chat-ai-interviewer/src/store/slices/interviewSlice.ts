@@ -145,6 +145,10 @@ const interviewSlice = createSlice({
     setFinalResults: (state, action: PayloadAction<{ score: number; summary: string }>) => {
       state.finalScore = action.payload.score;
       state.finalSummary = action.payload.summary;
+      // Mirror the AI final summary into current candidate for consistent persistence
+      if (state.currentCandidate) {
+        state.currentCandidate.resumeText = action.payload.summary;
+      }
     },
     resetInterview: () => initialState,
   },

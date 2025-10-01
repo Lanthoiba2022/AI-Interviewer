@@ -70,10 +70,18 @@ const ResumeUpload = () => {
       if (!candidateInfo.email) missingFields.push('email');
       if (!candidateInfo.phone) missingFields.push('phone');
 
+      const strengthsList = (analysis.strengths || []).map((s: string) => `- ${s}`).join('\n');
+      const weaknessesList = (analysis.weaknesses || []).map((w: string) => `- ${w}`).join('\n');
+      const detailedResumeSummary = [
+        analysis.summary?.trim() || '',
+        strengthsList ? `\n\nStrengths:\n${strengthsList}` : '',
+        weaknessesList ? `\n\nAreas for improvement:\n${weaknessesList}` : '',
+      ].join('');
+
       dispatch(setCandidate({
         id: Date.now().toString(),
         ...candidateInfo,
-        resumeText: analysis.summary,
+        resumeText: detailedResumeSummary || analysis.summary,
         resumeFileName: file.name,
         resumeScore: analysis.score,
         resumeStrengths: analysis.strengths,
@@ -88,7 +96,7 @@ const ResumeUpload = () => {
       // Add the detailed resume analysis summary to chat history
       dispatch(addChatMessage({
         type: 'ai',
-        content: `**Detailed Resume Analysis Summary:**\n\n${analysis.summary}`,
+        content: `Detailed Resume Analysis Summary:\n\n${analysis.summary}${strengthsList ? `\n\nStrengths:\n${strengthsList}` : ''}${weaknessesList ? `\n\nAreas for improvement:\n${weaknessesList}` : ''}`,
       }));
 
       if (missingFields.length > 0) {

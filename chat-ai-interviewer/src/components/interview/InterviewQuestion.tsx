@@ -191,8 +191,13 @@ const InterviewQuestion = () => {
       stopListening();
     }
 
-    // DO NOT evaluate per-question; evaluation deferred to end of interview
-    setIsEvaluating(false);
+    // If this was the last question, immediately show evaluating state
+    if (currentQuestionIndex >= questions.length - 1) {
+      setIsEvaluating(true);
+    } else {
+      // DO NOT evaluate per-question; evaluation deferred to end of interview
+      setIsEvaluating(false);
+    }
 
     // Move to next question or finish
     setTimeout(async () => {
@@ -205,6 +210,8 @@ const InterviewQuestion = () => {
       } else {
         // Interview complete - evaluate all answers, then generate final summary
         try {
+          // Evaluating loader already enabled above for last question
+
           // Evaluate all questions sequentially to gather per-question scores and feedback
           const evaluations: Array<{ score: number; feedback: string }> = [];
           for (let i = 0; i < questions.length; i++) {
@@ -230,8 +237,14 @@ const InterviewQuestion = () => {
             questions.map((q, i) => ({ answer: q.answer, score: evaluations[i]?.score || q.score || 0 }))
           );
 
+          // Normalize scores that may come as 0-10 to 0-100
+          const normalizedEvaluations = evaluations.map((e) => {
+            const score = e.score <= 10 && e.score > 0 ? e.score * 10 : e.score;
+            return { ...e, score: Math.round(score) };
+          });
+
           const totalScore = Math.round(
-            evaluations.reduce((sum, e) => sum + e.score, 0) / Math.max(1, questions.length)
+            normalizedEvaluations.reduce((sum, e) => sum + e.score, 0) / Math.max(1, questions.length)
           );
 
           dispatch(setFinalResults({ score: totalScore, summary: finalSummary }));
@@ -241,22 +254,17 @@ const InterviewQuestion = () => {
             content: `Interview completed! Your final score is ${totalScore}%. ${finalSummary}`,
           }));
 
-          // Play final summary as audio
-          try {
-            setIsPlayingAudio(true);
-            await aiService.textToSpeech(`Interview completed! Your final score is ${totalScore}%. ${finalSummary}`);
-          } catch (error) {
-            console.error('TTS error:', error);
-          } finally {
-            setIsPlayingAudio(false);
-          }
-
           // Mark the interview as completed to prevent re-asking
           dispatch(setStage('completed'));
+          setIsEvaluating(false);
         } catch (error) {
           console.error('Final summary error:', error);
           const totalScore = Math.round(
-            questions.reduce((sum, q) => sum + (q.score || 0), 0) / Math.max(1, questions.length)
+            questions.reduce((sum, q) => {
+              const raw = q.score || 0;
+              const normalized = raw <= 10 && raw > 0 ? raw * 10 : raw;
+              return sum + normalized;
+            }, 0) / Math.max(1, questions.length)
           );
           const summary = `Completed ${questions.length} questions with an average score of ${totalScore}%.`;
 
@@ -269,6 +277,7 @@ const InterviewQuestion = () => {
 
           // Ensure stage is set to completed even on error
           dispatch(setStage('completed'));
+          setIsEvaluating(false);
         }
       }
     }, 2000);
@@ -307,7 +316,7 @@ const InterviewQuestion = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="relative max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div className="text-center space-y-4">
         <div className="flex items-center justify-between">
@@ -335,6 +344,17 @@ const InterviewQuestion = () => {
           </p>
         </div>
       </div>
+
+      {/* Full-screen-ish overlay loader during final evaluation */}
+      {(!isQuestionActive && isEvaluating) && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+          <div className="flex flex-col items-center space-y-3">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <div className="text-base font-medium text-foreground">Analyzing your interview answers…</div>
+            <div className="text-xs text-muted-foreground">This may take a few moments.</div>
+          </div>
+        </div>
+      )}
 
       {/* Question Card */}
       <Card className="border-2 border-primary/20">
@@ -372,7 +392,7 @@ const InterviewQuestion = () => {
             </p>
           </div>
 
-          {/* Audio Status */}
+          {/* Audio Status - removed for final summary; keep only during question reading */}
           {isPlayingAudio && (
             <div className="flex items-center justify-center space-x-2 text-blue-600 bg-blue-50 p-3 rounded-lg">
               <Volume2 className="h-4 w-4 animate-pulse" />
@@ -381,6 +401,14 @@ const InterviewQuestion = () => {
           )}
 
           {/* Answer Input */}
+          {/* When not active and evaluating (after last submit), show a centered loader */}
+          {!isQuestionActive && isEvaluating && (
+            <div className="flex items-center justify-center space-x-2 text-orange-600 bg-orange-50 p-4 rounded-lg">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm">AI is evaluating your answers, please wait...</span>
+            </div>
+          )}
+
           {isQuestionActive && (
             <div className="space-y-4">
               <div>
