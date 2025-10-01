@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { setCandidate, setMissingFields, setStage, addChatMessage, startInterview, setResumeAnalysis, setResumeAnalysisComplete } from '@/store/slices/interviewSlice';
+import { setCandidate, setMissingFields, setStage, addChatMessage, startInterview, setResumeAnalysis, setResumeAnalysisComplete, initializeInterview } from '@/store/slices/interviewSlice';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,14 @@ const ResumeUpload = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const { currentCandidate, stage } = useSelector((state: RootState) => state.interview);
+
+  // Initialize interview session id on first mount if not already
+  useEffect(() => {
+    if (!currentCandidate) {
+      dispatch(initializeInterview());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
     // For now, we'll use AI analysis directly instead of text extraction

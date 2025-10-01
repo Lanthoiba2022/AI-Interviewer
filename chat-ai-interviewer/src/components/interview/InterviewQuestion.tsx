@@ -11,6 +11,7 @@ import {
   setQuestionAIAnswer,
   setFinalResults,
   resetInterview,
+  pauseInterview,
   setStage
 } from '@/store/slices/interviewSlice';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, Send, SkipForward, Mic, MicOff, Volume2, Loader2, CheckCircle, X } from 'lucide-react';
 import type { Question } from '@/store/slices/interviewSlice';
 import { aiService } from '@/services/aiService';
+import { removeInProgressInterview, moveToCompleted } from '@/store/slices/candidatesSlice';
 import { useSpeechToText } from '@/services/speechService';
 
 const InterviewQuestion = () => {
@@ -30,7 +32,9 @@ const InterviewQuestion = () => {
     currentQuestionIndex, 
     isQuestionActive, 
     timeRemaining, 
-    currentCandidate 
+    currentCandidate,
+    interviewId,
+    chatHistory
   } = useSelector((state: RootState) => state.interview);
 
   const [answer, setAnswer] = useState('');
@@ -38,6 +42,7 @@ const InterviewQuestion = () => {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [hasReadQuestion, setHasReadQuestion] = useState(false);
+  const [allowTTS, setAllowTTS] = useState(true);
 
   // Speech-to-text hook
   const { 
@@ -51,7 +56,11 @@ const InterviewQuestion = () => {
   } = useSpeechToText();
 
   const currentQuestion = questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+  const progress = (() => {
+    const answeredCount = questions.filter(q => (q.answer || '').trim().length > 0).length;
+    const total = Math.max(questions.length, 1);
+    return (answeredCount / total) * 100;
+  })();
 
   // Timer effect
   useEffect(() => {
@@ -69,12 +78,24 @@ const InterviewQuestion = () => {
     return () => clearInterval(interval);
   }, [isQuestionActive, timeRemaining, dispatch, answer]);
 
-  // Start question when component mounts
+  // Start question when component mounts or when continuing
   useEffect(() => {
+    // Always try to use TTS first when continuing; timer will only start after TTS ends
+    // If TTS has been explicitly disabled (e.g., after Exit), start immediately without TTS
     if (currentQuestion && !isQuestionActive && !hasReadQuestion) {
-      startCurrentQuestion();
+      if (allowTTS) {
+        startCurrentQuestion();
+      } else {
+        setIsPlayingAudio(false);
+        setHasReadQuestion(true);
+        dispatch(startQuestion());
+        setStartTime(Date.now());
+        setAllowTTS(true);
+        setAnswer('');
+        resetTranscript();
+      }
     }
-  }, [currentQuestion, isQuestionActive, hasReadQuestion]);
+  }, [currentQuestion, isQuestionActive, hasReadQuestion, allowTTS, dispatch, resetTranscript]);
 
   // Update answer when transcript changes
   useEffect(() => {
@@ -203,6 +224,8 @@ const InterviewQuestion = () => {
     // Move to next question or finish
     setTimeout(async () => {
       if (currentQuestionIndex < questions.length - 1) {
+        // After submit/skip, do not replay TTS for current question; enable TTS for the next question
+        setAllowTTS(true);
         dispatch(nextQuestion());
         // Reset for next question
         setHasReadQuestion(false);
@@ -213,6 +236,8 @@ const InterviewQuestion = () => {
         try {
           // Evaluating loader already enabled above for last question
 
+          // Show evaluating state while we process final results for the whole interview
+          setIsEvaluating(true);
           // Evaluate all questions sequentially to gather per-question scores and feedback
           const evaluations: Array<{ score: number; feedback: string; aiAnswer: string }> = [];
           for (let i = 0; i < questions.length; i++) {
@@ -291,6 +316,20 @@ const InterviewQuestion = () => {
 
           // Mark the interview as completed to prevent re-asking
           dispatch(setStage('completed'));
+          if (interviewId && currentCandidate) {
+            dispatch(moveToCompleted({
+              interviewId,
+              completedCandidate: {
+                ...currentCandidate,
+                questions,
+                finalScore: weightedFinal,
+                finalSummary: finalSummary,
+                completedAt: Date.now(),
+                chatHistory,
+              }
+            }));
+            dispatch(removeInProgressInterview(interviewId));
+          }
           setIsEvaluating(false);
         } catch (error) {
           console.error('Final summary error:', error);
@@ -311,6 +350,20 @@ const InterviewQuestion = () => {
 
           // Ensure stage is set to completed even on error
           dispatch(setStage('completed'));
+          if (interviewId && currentCandidate) {
+            dispatch(moveToCompleted({
+              interviewId,
+              completedCandidate: {
+                ...currentCandidate,
+                questions,
+                finalScore: weightedFinalErr,
+                finalSummary: summary,
+                completedAt: Date.now(),
+                chatHistory,
+              }
+            }));
+            dispatch(removeInProgressInterview(interviewId));
+          }
           setIsEvaluating(false);
         }
       }
@@ -341,6 +394,8 @@ const InterviewQuestion = () => {
     // Proceed to next or finish evaluation
     setTimeout(async () => {
       if (currentQuestionIndex < questions.length - 1) {
+        // For auto-advance due to timeout, we allow TTS since user didn't actively submit
+        setAllowTTS(true);
         dispatch(nextQuestion());
         setHasReadQuestion(false);
         setAnswer('');
@@ -417,6 +472,20 @@ const InterviewQuestion = () => {
           }));
 
           dispatch(setStage('completed'));
+          if (interviewId && currentCandidate) {
+            dispatch(moveToCompleted({
+              interviewId,
+              completedCandidate: {
+                ...currentCandidate,
+                questions,
+                finalScore: weightedFinal2,
+                finalSummary: finalSummary,
+                completedAt: Date.now(),
+                chatHistory,
+              }
+            }));
+            dispatch(removeInProgressInterview(interviewId));
+          }
           setIsEvaluating(false);
         } catch (error) {
           console.error('Final summary error:', error);
@@ -434,6 +503,20 @@ const InterviewQuestion = () => {
             content: `Interview completed! Your final score is ${weightedFinal2Err}%. ${summary}`,
           }));
           dispatch(setStage('completed'));
+          if (interviewId && currentCandidate) {
+            dispatch(moveToCompleted({
+              interviewId,
+              completedCandidate: {
+                ...currentCandidate,
+                questions,
+                finalScore: weightedFinal2Err,
+                finalSummary: summary,
+                completedAt: Date.now(),
+                chatHistory,
+              }
+            }));
+            dispatch(removeInProgressInterview(interviewId));
+          }
           setIsEvaluating(false);
         }
       }
@@ -457,9 +540,12 @@ const InterviewQuestion = () => {
 
   const handleEndInterview = () => {
     // Use a simple confirmation without popup blockers
-    const confirmed = confirm('Are you sure you want to end this interview? All progress will be lost.');
+    const confirmed = confirm('Exit and continue later? Your progress will be saved.');
     if (confirmed) {
-      dispatch(resetInterview());
+      // Prevent any pending TTS for current/next question after exit
+      setAllowTTS(false);
+      // Pause instead of reset so user can resume later
+      dispatch(pauseInterview());
     }
   };
 
@@ -490,16 +576,16 @@ const InterviewQuestion = () => {
             className="flex items-center space-x-2"
           >
             <X className="h-4 w-4" />
-            <span>End Interview</span>
+            <span>Exit</span>
           </Button>
         </div>
         
-        <div className="max-w-md mx-auto">
-          <Progress value={progress} className="h-2" />
-          <p className="text-sm text-muted-foreground mt-2">
-            Question {currentQuestionIndex + 1} of {questions.length}
-          </p>
-        </div>
+          <div className="max-w-md mx-auto">
+            <Progress value={progress} className="h-2" />
+            <p className="text-sm text-muted-foreground mt-2">
+              {Math.round(progress)}% complete • {questions.filter(q => (q.answer || '').trim().length > 0).length}/{questions.length} answered
+            </p>
+          </div>
       </div>
 
       {/* Full-screen-ish overlay loader during final evaluation */}

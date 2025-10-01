@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store/store';
 import { resetInterview } from '@/store/slices/interviewSlice';
-import { addCompletedCandidate } from '@/store/slices/candidatesSlice';
+import { addCompletedCandidate, removeInProgressInterview } from '@/store/slices/candidatesSlice';
 import { indexedDBService } from '@/services/indexedDBService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,8 @@ const InterviewComplete = () => {
     questions, 
     finalScore, 
     finalSummary, 
-    chatHistory 
+    chatHistory,
+    interviewId
   } = useSelector((state: RootState) => state.interview);
 
   const handleSaveResults = async () => {
@@ -76,6 +77,9 @@ const InterviewComplete = () => {
 
     // Reset for next candidate
     dispatch(resetInterview());
+    if (interviewId) {
+      dispatch(removeInProgressInterview(interviewId));
+    }
   };
 
   const handleNewInterview = () => {
