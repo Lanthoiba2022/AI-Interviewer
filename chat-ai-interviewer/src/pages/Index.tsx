@@ -1,11 +1,14 @@
 import { Provider } from 'react-redux';
-import { store } from '@/store/store';
+import { store, persistor } from '@/store/store';
+import { PersistGate } from 'redux-persist/integration/react';
 import TabLayout from '@/components/TabLayout';
 
 const Index = () => {
   return (
     <Provider store={store}>
-      <TabLayout />
+      <PersistGate loading={null} persistor={persistor}>
+        <TabLayout />
+      </PersistGate>
     </Provider>
   );
 };
