@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ApiKeyValidator from "./components/ApiKeyValidator";
 import { validateApiKeys } from "./config/api";
+import { Analytics } from '@vercel/analytics/react';
 
 // Do not clear persistent storage on app start. Keep IndexedDB/localStorage for persistence.
 const clearAllData = async () => {
@@ -85,6 +86,7 @@ const App = () => {
             <Route path="/" element={<Index />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
+            <Analytics />
           </Routes>
         </BrowserRouter>
         {showApiValidator && (
