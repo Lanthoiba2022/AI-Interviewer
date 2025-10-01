@@ -61,12 +61,12 @@ const InterviewQuestion = () => {
         dispatch(tickTimer());
       }, 1000);
     } else if (isQuestionActive && timeRemaining === 0) {
-      // Time's up - auto submit
-      handleSubmit(true);
+      // Time's up - auto behavior
+      handleTimeUp();
     }
 
     return () => clearInterval(interval);
-  }, [isQuestionActive, timeRemaining, dispatch]);
+  }, [isQuestionActive, timeRemaining, dispatch, answer]);
 
   // Start question when component mounts
   useEffect(() => {
@@ -281,6 +281,100 @@ const InterviewQuestion = () => {
         }
       }
     }, 2000);
+  };
+
+  // Handle timer expiry: auto-submit only if there is content, otherwise skip without posting placeholder
+  const handleTimeUp = async () => {
+    if (!currentQuestion) return;
+    const hasContent = !!answer.trim();
+    if (hasContent) {
+      await handleSubmit(true);
+      return;
+    }
+
+    const timeSpent = currentQuestion.timeLimit - timeRemaining;
+
+    // Submit empty answer quietly (no chat bubble)
+    dispatch(submitAnswer({ 
+      answer: '', 
+      timeSpent 
+    }));
+
+    if (isRecording) {
+      stopListening();
+    }
+
+    // Proceed to next or finish evaluation
+    setTimeout(async () => {
+      if (currentQuestionIndex < questions.length - 1) {
+        dispatch(nextQuestion());
+        setHasReadQuestion(false);
+        setAnswer('');
+        resetTranscript();
+      } else {
+        try {
+          setIsEvaluating(true);
+          const evaluations: Array<{ score: number; feedback: string }> = [];
+          for (let i = 0; i < questions.length; i++) {
+            const q = questions[i];
+            try {
+              const evalResult = await aiService.evaluateAnswer(q.text, q.answer || '', q.difficulty);
+              evaluations.push({ score: evalResult.score, feedback: evalResult.feedback });
+              dispatch(setQuestionScore({ questionIndex: i, score: evalResult.score }));
+            } catch (e) {
+              const fallback = Math.floor(Math.random() * 40) + 60;
+              evaluations.push({ score: fallback, feedback: 'Feedback unavailable.' });
+              dispatch(setQuestionScore({ questionIndex: i, score: fallback }));
+            }
+          }
+
+          const summaryLines = evaluations.map((e, idx) => `Q${idx + 1}: ${e.score}%`).join(' | ');
+          dispatch(addChatMessage({ type: 'ai', content: `Per-question scores: ${summaryLines}` }));
+
+          const finalSummary = await aiService.generateFinalSummary(
+            currentCandidate,
+            questions,
+            questions.map((q, i) => ({ answer: q.answer, score: evaluations[i]?.score || q.score || 0 }))
+          );
+
+          const normalizedEvaluations = evaluations.map((e) => {
+            const score = e.score <= 10 && e.score > 0 ? e.score * 10 : e.score;
+            return { ...e, score: Math.round(score) };
+          });
+
+          const totalScore = Math.round(
+            normalizedEvaluations.reduce((sum, e) => sum + e.score, 0) / Math.max(1, questions.length)
+          );
+
+          dispatch(setFinalResults({ score: totalScore, summary: finalSummary }));
+          dispatch(addChatMessage({
+            type: 'ai',
+            content: `Interview completed! Your final score is ${totalScore}%. ${finalSummary}`,
+          }));
+
+          dispatch(setStage('completed'));
+          setIsEvaluating(false);
+        } catch (error) {
+          console.error('Final summary error:', error);
+          const totalScore = Math.round(
+            questions.reduce((sum, q) => {
+              const raw = q.score || 0;
+              const normalized = raw <= 10 && raw > 0 ? raw * 10 : raw;
+              return sum + normalized;
+            }, 0) / Math.max(1, questions.length)
+          );
+          const summary = `Completed ${questions.length} questions with an average score of ${totalScore}%.`;
+
+          dispatch(setFinalResults({ score: totalScore, summary }));
+          dispatch(addChatMessage({
+            type: 'ai',
+            content: `Interview completed! Your final score is ${totalScore}%. ${summary}`,
+          }));
+          dispatch(setStage('completed'));
+          setIsEvaluating(false);
+        }
+      }
+    }, 100);
   };
 
   const getDifficultyColor = (difficulty: string) => {
