@@ -90,18 +90,75 @@ const InterviewQuestion = () => {
     // Play only the question text (without question number)
     try {
       setIsPlayingAudio(true);
-      await aiService.textToSpeech(currentQuestion.text);
+      const audio = await aiService.textToSpeech(currentQuestion.text);
+      
+      // Check if TTS failed (returned null)
+      if (!audio) {
+        console.log('TTS failed, waiting 5 seconds then starting timer');
+        // Wait 5 seconds for TTS failure, then start timer
+        setTimeout(() => {
+          setIsPlayingAudio(false);
+          setHasReadQuestion(true);
+          
+          dispatch(startQuestion());
+          setStartTime(Date.now());
+          setAnswer('');
+          resetTranscript();
+        }, 5000);
+        return;
+      }
+      
+      // TTS succeeded - wait for audio to finish playing before starting timer
+      // Set a timeout to prevent infinite waiting if audio never ends
+      const timeoutId = setTimeout(() => {
+        console.log('TTS timeout - starting timer anyway');
+        setIsPlayingAudio(false);
+        setHasReadQuestion(true);
+        
+        dispatch(startQuestion());
+        setStartTime(Date.now());
+        setAnswer('');
+        resetTranscript();
+      }, 30000); // 30 second timeout
+      
+      audio.addEventListener('ended', () => {
+        console.log('TTS audio finished, starting timer');
+        clearTimeout(timeoutId);
+        setIsPlayingAudio(false);
+        setHasReadQuestion(true);
+        
+        // Start the question and timer after TTS finishes
+        dispatch(startQuestion());
+        setStartTime(Date.now());
+        setAnswer('');
+        resetTranscript();
+      });
+      
+      // If audio is already ended (very short text), start immediately
+      if (audio.ended) {
+        console.log('TTS audio already finished, starting timer immediately');
+        clearTimeout(timeoutId);
+        setIsPlayingAudio(false);
+        setHasReadQuestion(true);
+        
+        dispatch(startQuestion());
+        setStartTime(Date.now());
+        setAnswer('');
+        resetTranscript();
+      }
     } catch (error) {
       console.error('TTS error:', error);
-    } finally {
-      setIsPlayingAudio(false);
-      setHasReadQuestion(true);
-      
-      // Start the question and timer after TTS finishes
-      dispatch(startQuestion());
-      setStartTime(Date.now());
-      setAnswer('');
-      resetTranscript();
+      // Fallback on error - wait 5 seconds then start timer
+      console.log('TTS failed, waiting 5 seconds then starting timer');
+      setTimeout(() => {
+        setIsPlayingAudio(false);
+        setHasReadQuestion(true);
+        
+        dispatch(startQuestion());
+        setStartTime(Date.now());
+        setAnswer('');
+        resetTranscript();
+      }, 5000);
     }
   };
 
@@ -289,7 +346,7 @@ const InterviewQuestion = () => {
               </div>
             </div>
             
-            {isQuestionActive && (
+            {isQuestionActive && !isPlayingAudio && (
               <div className={`flex items-center space-x-2 ${timeRemaining <= 10 ? 'text-red-600' : 'text-foreground'}`}>
                 <Clock className="h-5 w-5" />
                 <span className="font-mono font-bold text-lg">

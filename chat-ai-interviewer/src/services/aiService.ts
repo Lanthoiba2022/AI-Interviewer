@@ -62,7 +62,7 @@ class AIService {
   }
 
   // Convert text to speech using specialized service
-  async textToSpeech(text: string): Promise<HTMLAudioElement> {
+  async textToSpeech(text: string): Promise<HTMLAudioElement | null> {
     return this.ttsService.textToSpeech(text);
   }
 }
