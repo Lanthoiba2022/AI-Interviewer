@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { MessageCircle, User, Bot } from 'lucide-react';
 
 const InterviewChatHistory = () => {
-  const { chatHistory, currentCandidate, resumeAnalysis } = useSelector((state: RootState) => state.interview);
+  const { chatHistory, currentCandidate } = useSelector((state: RootState) => state.interview);
 
   if (!chatHistory || chatHistory.length === 0) {
     return (
@@ -35,20 +35,7 @@ const InterviewChatHistory = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 max-h-96 overflow-y-auto">
-          {resumeAnalysis?.summary && (
-            <div className="flex justify-start">
-              <div className="max-w-[80%] p-4 rounded-lg bg-gray-100 text-gray-900 mr-4">
-                <div className="flex items-center space-x-2 mb-2">
-                  <Bot className="h-4 w-4" />
-                  <Badge variant="outline" className="text-xs">AI Interviewer</Badge>
-                  <span className="text-xs text-muted-foreground">Resume Summary</span>
-                </div>
-                <div className="whitespace-pre-wrap text-sm">
-                  {resumeAnalysis.summary}
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Rely solely on chatHistory for consistency with Interviewer Dashboard */}
           {chatHistory.map((message, idx) => (
             <div
               key={`${message.id}-${message.timestamp}-${idx}`}

@@ -87,6 +87,12 @@ const InterviewQuestion = () => {
 
     console.log('Starting question:', currentQuestionIndex + 1, currentQuestion);
 
+    // Record the question text in chat history so it appears consistently everywhere
+    dispatch(addChatMessage({
+      type: 'ai',
+      content: currentQuestion.text,
+    }));
+
     // Play only the question text (without question number)
     try {
       setIsPlayingAudio(true);

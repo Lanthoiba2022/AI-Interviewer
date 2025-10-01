@@ -85,6 +85,12 @@ const ResumeUpload = () => {
         content: `Resume analysis complete! I found ${analysis.strengths.length} key strengths and identified areas for improvement. Resume score: ${analysis.score}/100.`,
       }));
 
+      // Add the detailed resume analysis summary to chat history
+      dispatch(addChatMessage({
+        type: 'ai',
+        content: `**Detailed Resume Analysis Summary:**\n\n${analysis.summary}`,
+      }));
+
       if (missingFields.length > 0) {
         dispatch(setMissingFields(missingFields));
         dispatch(setStage('collecting-info'));
