@@ -190,6 +190,14 @@ const CandidateDetails = ({ candidate, onBack }: CandidateDetailsProps) => {
                     {question.answer || 'No answer provided'}
                   </p>
                 </div>
+                {question.aiAnswer && (
+                  <div className="bg-muted/40 p-3 rounded-md mt-2">
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium">AI Answer: </span>
+                      {question.aiAnswer}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center space-x-4 text-sm text-muted-foreground">

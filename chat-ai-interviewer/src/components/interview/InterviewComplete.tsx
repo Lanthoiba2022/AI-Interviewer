@@ -159,6 +159,19 @@ const InterviewComplete = () => {
             </p>
           </div>
 
+          {/* AI Answers (concise) */}
+          <div className="p-4 bg-muted/30 rounded-lg">
+            <h3 className="font-medium mb-2">AI Answers (concise)</h3>
+            <div className="space-y-2">
+              {questions.map((q, idx) => (
+                <div key={q.id} className="text-sm">
+                  <span className="font-medium">Q{idx + 1}:</span>{' '}
+                  {q.aiAnswer ? q.aiAnswer : '—'}
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Question Breakdown */}
           <div className="space-y-3">
             <h3 className="font-medium flex items-center space-x-2">

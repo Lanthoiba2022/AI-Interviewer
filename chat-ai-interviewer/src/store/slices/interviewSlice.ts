@@ -8,6 +8,7 @@ export interface Question {
   answer?: string;
   score?: number;
   timeSpent?: number;
+  aiAnswer?: string;
 }
 
 export interface Candidate {
@@ -135,6 +136,12 @@ const interviewSlice = createSlice({
         question.score = action.payload.score;
       }
     },
+    setQuestionAIAnswer: (state, action: PayloadAction<{ questionIndex: number; aiAnswer: string }>) => {
+      const question = state.questions[action.payload.questionIndex];
+      if (question) {
+        question.aiAnswer = action.payload.aiAnswer;
+      }
+    },
     nextQuestion: (state) => {
       state.currentQuestionIndex += 1;
       if (state.currentQuestionIndex >= state.questions.length) {
@@ -167,6 +174,7 @@ export const {
   tickTimer,
   submitAnswer,
   setQuestionScore,
+  setQuestionAIAnswer,
   nextQuestion,
   setFinalResults,
   resetInterview,

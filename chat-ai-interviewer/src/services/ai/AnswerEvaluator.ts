@@ -7,6 +7,7 @@ export interface AnswerEvaluation {
   feedback: string;
   strengths: string[];
   improvements: string[];
+  conciseAnswer?: string;
 }
 
 export class AnswerEvaluator extends BaseAIService {
@@ -28,13 +29,15 @@ Provide a detailed evaluation with:
 2. Specific feedback on what was good and what could be improved
 3. 2-3 key strengths shown in the answer
 4. 2-3 areas for improvement
+5. A concise correct answer (1-3 sentences) suitable for this difficulty level
 
 Return the response in this JSON format:
 {
   "score": 85,
   "feedback": "detailed feedback",
   "strengths": ["strength1", "strength2"],
-  "improvements": ["improvement1", "improvement2"]
+  "improvements": ["improvement1", "improvement2"],
+  "concise_answer": "a short, correct answer no deeper than needed"
 }`
         }
       ], { model: API_CONFIG.PUTER_MODEL, stream: true });
@@ -68,7 +71,8 @@ Return the response in this JSON format:
           score: evaluation.score || 0,
           feedback: evaluation.feedback || 'No specific feedback available',
           strengths: evaluation.strengths || [],
-          improvements: evaluation.improvements || []
+          improvements: evaluation.improvements || [],
+          conciseAnswer: evaluation.concise_answer || evaluation.conciseAnswer || ''
         };
       } catch (parseError) {
         throw parseError as Error;

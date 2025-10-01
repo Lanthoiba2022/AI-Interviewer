@@ -8,6 +8,7 @@ import {
   nextQuestion,
   addChatMessage,
   setQuestionScore,
+  setQuestionAIAnswer,
   setFinalResults,
   resetInterview,
   setStage
@@ -213,16 +214,20 @@ const InterviewQuestion = () => {
           // Evaluating loader already enabled above for last question
 
           // Evaluate all questions sequentially to gather per-question scores and feedback
-          const evaluations: Array<{ score: number; feedback: string }> = [];
+          const evaluations: Array<{ score: number; feedback: string; aiAnswer: string }> = [];
           for (let i = 0; i < questions.length; i++) {
             const q = questions[i];
             try {
               const evalResult = await aiService.evaluateAnswer(q.text, q.answer || '', q.difficulty);
-              evaluations.push({ score: evalResult.score, feedback: evalResult.feedback });
+              const conciseAIAnswer = evalResult.conciseAnswer || '';
+              evaluations.push({ score: evalResult.score, feedback: evalResult.feedback, aiAnswer: conciseAIAnswer });
               dispatch(setQuestionScore({ questionIndex: i, score: evalResult.score }));
+              if (conciseAIAnswer) {
+                dispatch(setQuestionAIAnswer({ questionIndex: i, aiAnswer: conciseAIAnswer }));
+              }
             } catch (e) {
               const fallback = Math.floor(Math.random() * 40) + 60;
-              evaluations.push({ score: fallback, feedback: 'Feedback unavailable.' });
+              evaluations.push({ score: fallback, feedback: 'Feedback unavailable.', aiAnswer: '' });
               dispatch(setQuestionScore({ questionIndex: i, score: fallback }));
             }
           }
@@ -230,6 +235,15 @@ const InterviewQuestion = () => {
           // Post a compact per-question summary to chat
           const summaryLines = evaluations.map((e, idx) => `Q${idx + 1}: ${e.score}%`).join(' | ');
           dispatch(addChatMessage({ type: 'ai', content: `Per-question scores: ${summaryLines}` }));
+
+          // Post compact AI answers in chat for learning (not too deep)
+          const aiAnswersCompact = evaluations
+            .map((e, idx) => e.aiAnswer ? `Q${idx + 1}: ${e.aiAnswer}` : null)
+            .filter(Boolean)
+            .join('\n');
+          if (aiAnswersCompact) {
+            dispatch(addChatMessage({ type: 'ai', content: `AI Answers (concise):\n${aiAnswersCompact}` }));
+          }
 
           const finalSummary = await aiService.generateFinalSummary(
             currentCandidate,
@@ -314,22 +328,34 @@ const InterviewQuestion = () => {
       } else {
         try {
           setIsEvaluating(true);
-          const evaluations: Array<{ score: number; feedback: string }> = [];
+          const evaluations: Array<{ score: number; feedback: string; aiAnswer: string }> = [];
           for (let i = 0; i < questions.length; i++) {
             const q = questions[i];
             try {
               const evalResult = await aiService.evaluateAnswer(q.text, q.answer || '', q.difficulty);
-              evaluations.push({ score: evalResult.score, feedback: evalResult.feedback });
+              const conciseAIAnswer = evalResult.conciseAnswer || '';
+              evaluations.push({ score: evalResult.score, feedback: evalResult.feedback, aiAnswer: conciseAIAnswer });
               dispatch(setQuestionScore({ questionIndex: i, score: evalResult.score }));
+              if (conciseAIAnswer) {
+                dispatch(setQuestionAIAnswer({ questionIndex: i, aiAnswer: conciseAIAnswer }));
+              }
             } catch (e) {
               const fallback = Math.floor(Math.random() * 40) + 60;
-              evaluations.push({ score: fallback, feedback: 'Feedback unavailable.' });
+              evaluations.push({ score: fallback, feedback: 'Feedback unavailable.', aiAnswer: '' });
               dispatch(setQuestionScore({ questionIndex: i, score: fallback }));
             }
           }
 
           const summaryLines = evaluations.map((e, idx) => `Q${idx + 1}: ${e.score}%`).join(' | ');
           dispatch(addChatMessage({ type: 'ai', content: `Per-question scores: ${summaryLines}` }));
+
+          const aiAnswersCompact = evaluations
+            .map((e, idx) => e.aiAnswer ? `Q${idx + 1}: ${e.aiAnswer}` : null)
+            .filter(Boolean)
+            .join('\n');
+          if (aiAnswersCompact) {
+            dispatch(addChatMessage({ type: 'ai', content: `AI Answers (concise):\n${aiAnswersCompact}` }));
+          }
 
           const finalSummary = await aiService.generateFinalSummary(
             currentCandidate,
