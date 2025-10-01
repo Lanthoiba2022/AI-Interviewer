@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store/store';
 import { resetInterview } from '@/store/slices/interviewSlice';
 import { addCompletedCandidate } from '@/store/slices/candidatesSlice';
+import { indexedDBService } from '@/services/indexedDBService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +24,14 @@ const InterviewComplete = () => {
     chatHistory 
   } = useSelector((state: RootState) => state.interview);
 
-  const handleSaveResults = () => {
+  const handleSaveResults = async () => {
+    // Request persistent storage as part of a user gesture (higher grant chance)
+    if ('storage' in navigator && 'persist' in navigator.storage) {
+      navigator.storage.persist().then((granted) => {
+        console.log('Persistent storage (on save)', granted ? 'granted' : 'not granted');
+      }).catch((err) => console.warn('Persistent storage request (on save) failed:', err));
+    }
+
     if (!currentCandidate || finalScore === undefined) {
       toast({
         title: "Error",
@@ -43,14 +51,23 @@ const InterviewComplete = () => {
       return;
     }
 
-    dispatch(addCompletedCandidate({
+    const candidateRecord = {
       ...currentCandidate,
       questions,
       finalScore,
       finalSummary: finalSummary,
       completedAt: Date.now(),
       chatHistory,
-    }));
+    };
+
+    // Persist to IndexedDB (creates InterviewDB if not present)
+    try {
+      await indexedDBService.saveCandidate(candidateRecord);
+    } catch (err) {
+      console.warn('Failed to save candidate to IndexedDB:', err);
+    }
+
+    dispatch(addCompletedCandidate(candidateRecord));
 
     toast({
       title: "Results saved",

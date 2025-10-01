@@ -9,43 +9,24 @@ import NotFound from "./pages/NotFound";
 import ApiKeyValidator from "./components/ApiKeyValidator";
 import { validateApiKeys } from "./config/api";
 
-// Clear all stored data and sign out from Puter on app start
+// Do not clear persistent storage on app start. Keep IndexedDB/localStorage for persistence.
 const clearAllData = async () => {
-  // Sign out from Puter first
+  console.log('Persistence enabled: skipping storage clear on app start');
+};
+
+// Always sign out from Puter on app start (without touching local storage)
+const signOutPuter = async () => {
   try {
-    if (window.puter && window.puter.auth && typeof window.puter.auth.signOut === 'function') {
-      await window.puter.auth.signOut();
+    const anyWindow: any = window as unknown as any;
+    if (anyWindow.puter && anyWindow.puter.auth && typeof anyWindow.puter.auth.signOut === 'function') {
+      await anyWindow.puter.auth.signOut();
       console.log('Puter sign out completed');
+    } else {
+      console.log('Puter auth not available to sign out');
     }
   } catch (error) {
     console.log('Puter sign out failed or not available:', error);
   }
-  
-  // Clear localStorage
-  localStorage.clear();
-  
-  // Clear sessionStorage
-  sessionStorage.clear();
-  
-  // Clear IndexedDB if it exists
-  if ('indexedDB' in window) {
-    indexedDB.databases?.().then(databases => {
-      databases.forEach(db => {
-        if (db.name) {
-          indexedDB.deleteDatabase(db.name);
-        }
-      });
-    }).catch(console.error);
-  }
-  
-  // Clear any other storage
-  if ('caches' in window) {
-    caches.keys().then(names => {
-      names.forEach(name => caches.delete(name));
-    }).catch(console.error);
-  }
-  
-  console.log('All stored data cleared and Puter signed out on app start');
 };
 
 const queryClient = new QueryClient();
@@ -55,9 +36,10 @@ const App = () => {
   const [isValidated, setIsValidated] = useState(false);
 
   useEffect(() => {
-    // Clear all data and sign out from Puter on app start
+    // Keep data persistent across reloads; do not clear
     const initializeApp = async () => {
       await clearAllData();
+      await signOutPuter();
       
       // Check API keys on app load
       const validation = validateApiKeys();
@@ -65,6 +47,23 @@ const App = () => {
         setShowApiValidator(true);
       } else {
         setIsValidated(true);
+      }
+
+      // Request persistent storage so IndexedDB is not evicted on reload
+      try {
+        if ('storage' in navigator && 'persist' in navigator.storage) {
+          const already = await navigator.storage.persisted();
+          if (!already) {
+            // Improve grant odds: use a durable client hint and service worker registration where possible
+            try { await navigator.storage.estimate(); } catch {}
+            const granted = await navigator.storage.persist();
+            console.log('Persistent storage', granted ? 'granted' : 'not granted');
+          } else {
+            console.log('Persistent storage already granted');
+          }
+        }
+      } catch (err) {
+        console.warn('Persistent storage request failed:', err);
       }
     };
     
