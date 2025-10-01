@@ -38,7 +38,11 @@ const CandidateDetails = ({ candidate, onBack }: CandidateDetailsProps) => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const averageQuestionScore = candidate.questions.reduce((sum, q) => sum + (q.score || 0), 0) / candidate.questions.length;
+  const averageQuestionScore = candidate.questions.reduce((sum, q) => {
+    const raw = q.score || 0;
+    const normalized = raw <= 10 && raw > 0 ? raw * 10 : raw;
+    return sum + normalized;
+  }, 0) / candidate.questions.length;
 
   return (
     <div className="space-y-6">
@@ -137,7 +141,7 @@ const CandidateDetails = ({ candidate, onBack }: CandidateDetailsProps) => {
           <CardTitle>AI Summary</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-accent-foreground leading-relaxed">
+          <p className="text-foreground leading-relaxed whitespace-pre-wrap">
             {candidate.finalSummary}
           </p>
         </CardContent>
@@ -165,8 +169,8 @@ const CandidateDetails = ({ candidate, onBack }: CandidateDetailsProps) => {
                     <span>{formatTime(question.timeSpent || 0)}</span>
                   </div>
                 </div>
-                <Badge className={getScoreBadgeColor(question.score || 0)}>
-                  {question.score || 0}%
+                <Badge className={getScoreBadgeColor((question.score || 0) <= 10 && (question.score || 0) > 0 ? (question.score || 0) * 10 : (question.score || 0))}>
+                  {Math.round(((question.score || 0) <= 10 && (question.score || 0) > 0 ? (question.score || 0) * 10 : (question.score || 0)))}%
                 </Badge>
               </div>
               
@@ -185,7 +189,7 @@ const CandidateDetails = ({ candidate, onBack }: CandidateDetailsProps) => {
                 <span>•</span>
                 <span>Time Used: {formatTime(question.timeSpent || 0)}</span>
                 <span>•</span>
-                <span>Score: {question.score || 0}%</span>
+                <span>Score: {Math.round(((question.score || 0) <= 10 && (question.score || 0) > 0 ? (question.score || 0) * 10 : (question.score || 0)))}%</span>
               </div>
             </div>
           ))}

@@ -33,13 +33,21 @@ const InterviewComplete = () => {
       return;
     }
 
-    const summaryToSave = finalSummary || currentCandidate.resumeText || '';
+    // Require the real AI-generated final summary; do not fallback
+    if (!finalSummary || finalSummary.trim().length === 0) {
+      toast({
+        title: "Summary not ready",
+        description: "Please wait for the AI summary to generate before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     dispatch(addCompletedCandidate({
       ...currentCandidate,
       questions,
       finalScore,
-      finalSummary: summaryToSave,
+      finalSummary: finalSummary,
       completedAt: Date.now(),
       chatHistory,
     }));
@@ -146,7 +154,7 @@ const InterviewComplete = () => {
           {/* Summary */}
           <div className="p-4 bg-accent/30 rounded-lg">
             <h3 className="font-medium mb-2">AI Summary</h3>
-            <p className="text-sm text-accent-foreground">
+            <p className="text-sm text-accent-foreground whitespace-pre-wrap">
               {finalSummary}
             </p>
           </div>
