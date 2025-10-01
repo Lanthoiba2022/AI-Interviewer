@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { setCandidate, setMissingFields, setStage, addChatMessage, startInterview } from '@/store/slices/interviewSlice';
+import { setCandidate, setMissingFields, setStage, addChatMessage, startInterview, setResumeAnalysis, setResumeAnalysisComplete } from '@/store/slices/interviewSlice';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,11 +32,14 @@ const ResumeUpload = () => {
     if (!file) return;
 
     if (!file.type.includes('pdf') && !file.type.includes('document')) {
-      toast({
-        title: "Invalid file type",
-        description: "Please upload a PDF or DOCX file.",
-        variant: "destructive",
-      });
+      // Delay toast to avoid popup blocker during file chooser
+      setTimeout(() => {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload a PDF or DOCX file.",
+          variant: "destructive",
+        });
+      }, 100);
       return;
     }
 
@@ -52,6 +55,9 @@ const ResumeUpload = () => {
 
       // Use AI service to analyze resume
       const analysis = await aiService.analyzeResume(file);
+
+      // Store the resume analysis in cache
+      dispatch(setResumeAnalysis(analysis));
 
       const candidateInfo = {
         name: analysis.name || '',
@@ -84,10 +90,11 @@ const ResumeUpload = () => {
         dispatch(setStage('collecting-info'));
         dispatch(addChatMessage({
           type: 'ai',
-          content: `I need a few more details to complete your profile. Let me ask you for the missing information.`,
+          content: `I couldn't confidently extract ${missingFields.join(', ')} from your resume. Please provide them to continue.`,
         }));
       } else {
-        // Start the interview immediately
+        // Mark analysis as complete and start the interview
+        dispatch(setResumeAnalysisComplete(true));
         dispatch(setStage('interview'));
         dispatch(addChatMessage({
           type: 'ai',
@@ -95,14 +102,52 @@ const ResumeUpload = () => {
         }));
       }
 
-      toast({
-        title: "Resume analyzed successfully",
-        description: `AI analysis complete. Score: ${analysis.score}/100`,
-      });
+      // Delay toast to avoid popup blocker during file chooser
+      setTimeout(() => {
+        toast({
+          title: "Resume analyzed successfully",
+          description: `AI analysis complete. Score: ${analysis.score}/100`,
+        });
+      }, 100);
     } catch (error) {
       console.error('Resume analysis error:', error);
       
-      // Provide more specific error messages
+      // Handle missing fields error (analysis worked but missing some fields)
+      if (error instanceof Error && (error as any).missingFields) {
+        const missingFields = (error as any).missingFields;
+        dispatch(setMissingFields(missingFields));
+        dispatch(setStage('collecting-info'));
+        dispatch(addChatMessage({
+          type: 'ai',
+          content: `I couldn't extract ${missingFields.join(', ')} from your resume. Please provide them to continue.`,
+        }));
+        
+        // No toast for missing fields - just redirect to manual entry
+        return;
+      }
+      
+      // Handle "Resume Extraction is down" error (complete analysis failure)
+      if (error instanceof Error && error.message.includes('Resume Extraction is down')) {
+        // Delay toast to avoid popup blocker during file chooser
+        setTimeout(() => {
+          toast({
+            title: "Resume Extraction is down. Proceed manually",
+            description: "Please enter your information manually to continue.",
+            variant: "destructive",
+          });
+        }, 100);
+        
+        // Set stage to collecting-info for manual entry
+        dispatch(setMissingFields(['name', 'email', 'phone']));
+        dispatch(setStage('collecting-info'));
+        dispatch(addChatMessage({
+          type: 'ai',
+          content: `Resume analysis is currently unavailable. Please provide your name, email, and phone number to continue.`,
+        }));
+        return;
+      }
+      
+      // Handle other errors
       let errorMessage = "Failed to analyze the resume. Please try again.";
       if (error instanceof Error) {
         if (error.message.includes('Failed to analyze resume')) {
@@ -114,11 +159,14 @@ const ResumeUpload = () => {
         }
       }
       
-      toast({
-        title: "Analysis failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      // Delay toast to avoid popup blocker during file chooser
+      setTimeout(() => {
+        toast({
+          title: "Analysis failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }, 100);
     } finally {
       setIsProcessing(false);
     }
@@ -140,7 +188,10 @@ const ResumeUpload = () => {
     setDragActive(false);
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileUpload(e.dataTransfer.files[0]);
+      // Small delay to avoid popup blocker during drag and drop
+      setTimeout(() => {
+        handleFileUpload(e.dataTransfer.files[0]);
+      }, 50);
     }
   };
 
@@ -281,7 +332,14 @@ const ResumeUpload = () => {
             <Input
               type="file"
               accept=".pdf,.docx,.doc"
-              onChange={(e) => e.target.files && handleFileUpload(e.target.files[0])}
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  // Small delay to avoid popup blocker during file chooser
+                  setTimeout(() => {
+                    handleFileUpload(e.target.files![0]);
+                  }, 50);
+                }
+              }}
               className="hidden"
               id="resume-upload"
               disabled={isProcessing}

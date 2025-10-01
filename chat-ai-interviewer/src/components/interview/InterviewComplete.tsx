@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store/store';
 import { resetInterview } from '@/store/slices/interviewSlice';
@@ -6,12 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, RotateCcw, BarChart3 } from 'lucide-react';
+import { CheckCircle, RotateCcw, BarChart3, MessageCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import InterviewChatHistory from './InterviewChatHistory';
 
 const InterviewComplete = () => {
   const dispatch = useDispatch();
   const { toast } = useToast();
+  const [showChatHistory, setShowChatHistory] = useState(false);
   const { 
     currentCandidate, 
     questions, 
@@ -21,7 +24,7 @@ const InterviewComplete = () => {
   } = useSelector((state: RootState) => state.interview);
 
   const handleSaveResults = () => {
-    if (!currentCandidate || finalScore === undefined || !finalSummary) {
+    if (!currentCandidate || finalScore === undefined) {
       toast({
         title: "Error",
         description: "Missing interview data. Cannot save results.",
@@ -30,11 +33,13 @@ const InterviewComplete = () => {
       return;
     }
 
+    const summaryToSave = finalSummary || currentCandidate.resumeText || '';
+
     dispatch(addCompletedCandidate({
       ...currentCandidate,
       questions,
       finalScore,
-      finalSummary,
+      finalSummary: summaryToSave,
       completedAt: Date.now(),
       chatHistory,
     }));
@@ -218,6 +223,14 @@ const InterviewComplete = () => {
         </Button>
         <Button 
           variant="outline" 
+          onClick={() => setShowChatHistory(!showChatHistory)}
+          className="flex items-center space-x-2 min-w-32"
+        >
+          <MessageCircle className="h-4 w-4" />
+          <span>{showChatHistory ? 'Hide Chat' : 'View Chat'}</span>
+        </Button>
+        <Button 
+          variant="outline" 
           onClick={handleNewInterview}
           className="flex items-center space-x-2 min-w-32"
         >
@@ -225,6 +238,13 @@ const InterviewComplete = () => {
           <span>New Interview</span>
         </Button>
       </div>
+
+      {/* Chat History */}
+      {showChatHistory && (
+        <div className="mt-8">
+          <InterviewChatHistory />
+        </div>
+      )}
     </div>
   );
 };

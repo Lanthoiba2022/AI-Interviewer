@@ -14,11 +14,19 @@ const WelcomeBack = () => {
     questions, 
     currentQuestionIndex, 
     stage,
-    isInterviewActive 
+    isInterviewActive,
+    isResumeAnalysisComplete,
+    missingFields
   } = useSelector((state: RootState) => state.interview);
 
   const handleContinue = () => {
-    console.log('Continue interview clicked, current state:', { stage, questions: questions.length, currentQuestionIndex });
+    console.log('Continue interview clicked, current state:', { stage, questions: questions.length, currentQuestionIndex, isResumeAnalysisComplete });
+    
+    // Check if resume analysis is complete before allowing continuation
+    if (!isResumeAnalysisComplete) {
+      console.log('Resume analysis not complete, cannot continue');
+      return;
+    }
     
     // If we're in interview stage but no questions, generate them
     if (stage === 'interview' && questions.length === 0) {
@@ -53,12 +61,12 @@ const WelcomeBack = () => {
   };
 
   const getProgress = () => {
-    if (stage === 'collecting-info') return 25;
-    if (stage === 'interview') {
-      if (questions.length === 0) return 25; // If no questions yet, show 25%
-      return 25 + ((currentQuestionIndex + 1) / questions.length) * 75;
-    }
-    return 10;
+    // Candidate Info Bar: 100% only when name/email/phone are present
+    const hasAllInfo = !!(currentCandidate?.name && currentCandidate?.email && currentCandidate?.phone);
+    if (!hasAllInfo) return 50; // midway until complete
+    if (stage !== 'interview') return 100;
+    // During interview, keep info bar at 100%
+    return 100;
   };
 
   return (
@@ -111,7 +119,7 @@ const WelcomeBack = () => {
           {/* Progress */}
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Interview Progress</span>
+              <span className="text-sm font-medium">Candidate Info</span>
               <span className="text-sm text-muted-foreground">
                 {Math.round(getProgress())}%
               </span>
@@ -153,6 +161,7 @@ const WelcomeBack = () => {
           <div className="flex flex-col sm:flex-row gap-3 pt-4">
             <Button 
               onClick={handleContinue} 
+              disabled={!Boolean(currentCandidate?.name && currentCandidate?.email && currentCandidate?.phone)}
               className="flex-1 flex items-center justify-center space-x-2"
             >
               <Play className="h-4 w-4" />

@@ -32,10 +32,6 @@ const ApiKeyValidator = ({ onValidationComplete }: ApiKeyValidatorProps) => {
     }, 1000);
   };
 
-  const openAssemblyAI = () => {
-    window.open('https://www.assemblyai.com/', '_blank');
-  };
-
   if (validation.isValid) {
     return (
       <div className="fixed top-4 right-4 z-50">
@@ -79,15 +75,15 @@ const ApiKeyValidator = ({ onValidationComplete }: ApiKeyValidatorProps) => {
                 placeholder="Enter your AssemblyAI API key"
                 className="flex-1"
               />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={openAssemblyAI}
-                className="flex items-center space-x-1"
+              <a
+                href="https://www.assemblyai.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3"
               >
-                <ExternalLink className="h-4 w-4" />
+                <ExternalLink className="h-4 w-4 mr-1" />
                 <span>Get Key</span>
-              </Button>
+              </a>
             </div>
             <p className="text-xs text-muted-foreground">
               Get your free API key from AssemblyAI. It's required for voice input functionality.

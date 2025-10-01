@@ -9,6 +9,45 @@ import NotFound from "./pages/NotFound";
 import ApiKeyValidator from "./components/ApiKeyValidator";
 import { validateApiKeys } from "./config/api";
 
+// Clear all stored data and sign out from Puter on app start
+const clearAllData = async () => {
+  // Sign out from Puter first
+  try {
+    if (window.puter && window.puter.auth && typeof window.puter.auth.signOut === 'function') {
+      await window.puter.auth.signOut();
+      console.log('Puter sign out completed');
+    }
+  } catch (error) {
+    console.log('Puter sign out failed or not available:', error);
+  }
+  
+  // Clear localStorage
+  localStorage.clear();
+  
+  // Clear sessionStorage
+  sessionStorage.clear();
+  
+  // Clear IndexedDB if it exists
+  if ('indexedDB' in window) {
+    indexedDB.databases?.().then(databases => {
+      databases.forEach(db => {
+        if (db.name) {
+          indexedDB.deleteDatabase(db.name);
+        }
+      });
+    }).catch(console.error);
+  }
+  
+  // Clear any other storage
+  if ('caches' in window) {
+    caches.keys().then(names => {
+      names.forEach(name => caches.delete(name));
+    }).catch(console.error);
+  }
+  
+  console.log('All stored data cleared and Puter signed out on app start');
+};
+
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -16,13 +55,20 @@ const App = () => {
   const [isValidated, setIsValidated] = useState(false);
 
   useEffect(() => {
-    // Check API keys on app load
-    const validation = validateApiKeys();
-    if (!validation.isValid) {
-      setShowApiValidator(true);
-    } else {
-      setIsValidated(true);
-    }
+    // Clear all data and sign out from Puter on app start
+    const initializeApp = async () => {
+      await clearAllData();
+      
+      // Check API keys on app load
+      const validation = validateApiKeys();
+      if (!validation.isValid) {
+        setShowApiValidator(true);
+      } else {
+        setIsValidated(true);
+      }
+    };
+    
+    initializeApp();
   }, []);
 
   const handleValidationComplete = (isValid: boolean) => {

@@ -38,6 +38,7 @@ const InterviewerTab = () => {
       return sortOrder === 'asc' ? comparison : -comparison;
     });
 
+
   if (selectedCandidate) {
     return (
       <CandidateDetails 

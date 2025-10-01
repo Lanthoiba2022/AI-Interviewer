@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store/store';
-import { setCandidate, setStage, addChatMessage } from '@/store/slices/interviewSlice';
+import { setCandidate, setStage, addChatMessage, setResumeAnalysisComplete } from '@/store/slices/interviewSlice';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -79,10 +79,11 @@ const InfoCollection = () => {
       setInputValue('');
       resetTranscript();
     } else {
-      // All fields collected, start interview
+      // All fields collected, mark analysis as complete and start interview
+      dispatch(setResumeAnalysisComplete(true));
       dispatch(addChatMessage({
         type: 'ai',
-        content: `Perfect! I now have all your information. Let's begin your interview for the Full Stack Developer position. Are you ready to start?`,
+        content: `Perfect! I now have all your information. Let's begin your interview. Are you ready to start?`,
       }));
       
       setTimeout(() => {
@@ -121,9 +122,9 @@ const InfoCollection = () => {
       {/* Chat History */}
       <Card className="max-h-96 overflow-y-auto">
         <CardContent className="p-4 space-y-4">
-          {chatHistory.map((message) => (
+          {chatHistory.map((message, idx) => (
             <div
-              key={message.id}
+              key={`${message.id}-${message.timestamp}-${idx}`}
               className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div

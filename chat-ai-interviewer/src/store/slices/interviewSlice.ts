@@ -22,6 +22,16 @@ export interface Candidate {
   resumeWeaknesses?: string[];
 }
 
+export interface ResumeAnalysis {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  strengths: string[];
+  weaknesses: string[];
+  summary: string;
+  score: number;
+}
+
 export interface InterviewState {
   currentCandidate: Candidate | null;
   questions: Question[];
@@ -39,6 +49,8 @@ export interface InterviewState {
   finalSummary?: string;
   missingFields: string[];
   stage: 'upload' | 'collecting-info' | 'interview' | 'completed';
+  resumeAnalysis: ResumeAnalysis | null;
+  isResumeAnalysisComplete: boolean;
 }
 
 const initialState: InterviewState = {
@@ -51,6 +63,8 @@ const initialState: InterviewState = {
   chatHistory: [],
   missingFields: [],
   stage: 'upload',
+  resumeAnalysis: null,
+  isResumeAnalysisComplete: false,
 };
 
 const interviewSlice = createSlice({
@@ -82,6 +96,13 @@ const interviewSlice = createSlice({
     },
     setQuestions: (state, action: PayloadAction<Question[]>) => {
       state.questions = action.payload;
+    },
+    setResumeAnalysis: (state, action: PayloadAction<ResumeAnalysis>) => {
+      state.resumeAnalysis = action.payload;
+      state.isResumeAnalysisComplete = true;
+    },
+    setResumeAnalysisComplete: (state, action: PayloadAction<boolean>) => {
+      state.isResumeAnalysisComplete = action.payload;
     },
     startInterview: (state) => {
       state.isInterviewActive = true;
@@ -135,6 +156,8 @@ export const {
   setStage,
   addChatMessage,
   setQuestions,
+  setResumeAnalysis,
+  setResumeAnalysisComplete,
   startInterview,
   startQuestion,
   tickTimer,
