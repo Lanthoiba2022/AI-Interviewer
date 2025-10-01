@@ -40,8 +40,7 @@ const CandidateDetails = ({ candidate, onBack }: CandidateDetailsProps) => {
 
   const averageQuestionScore = candidate.questions.reduce((sum, q) => {
     const raw = q.score || 0;
-    const normalized = raw <= 10 && raw > 0 ? raw * 10 : raw;
-    return sum + normalized;
+    return sum + raw;
   }, 0) / candidate.questions.length;
 
   const getPerformanceLevel = (score: number) => {
@@ -177,8 +176,8 @@ const CandidateDetails = ({ candidate, onBack }: CandidateDetailsProps) => {
                     <span>{formatTime(question.timeSpent || 0)}</span>
                   </div>
                 </div>
-                <Badge className={getScoreBadgeColor((question.score || 0) <= 10 && (question.score || 0) > 0 ? (question.score || 0) * 10 : (question.score || 0))}>
-                  {Math.round(((question.score || 0) <= 10 && (question.score || 0) > 0 ? (question.score || 0) * 10 : (question.score || 0)))}%
+                <Badge className={getScoreBadgeColor((question.score || 0))}>
+                  {Math.round((question.score || 0))}%
                 </Badge>
               </div>
               
@@ -205,7 +204,7 @@ const CandidateDetails = ({ candidate, onBack }: CandidateDetailsProps) => {
                 <span>•</span>
                 <span>Time Used: {formatTime(question.timeSpent || 0)}</span>
                 <span>•</span>
-                <span>Score: {Math.round(((question.score || 0) <= 10 && (question.score || 0) > 0 ? (question.score || 0) * 10 : (question.score || 0)))}%</span>
+                <span>Score: {Math.round((question.score || 0))}%</span>
               </div>
             </div>
           ))}
