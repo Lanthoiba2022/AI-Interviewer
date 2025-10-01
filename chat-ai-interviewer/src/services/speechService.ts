@@ -68,8 +68,8 @@ class SpeechToTextService {
     try {
       const stream = await this.initializeMicrophone();
 
-      // Set up WebSocket connection to AssemblyAI first
-      this.setupWebSocketConnection(onResult, onError);
+      // Set up WebSocket connection to AssemblyAI (Realtime v3 - binary frames)
+      await this.setupWebSocketConnection(onResult, onError);
 
       // Start audio processing when socket is open
       const startAudio = () => {
@@ -85,9 +85,9 @@ class SpeechToTextService {
           const inputData = e.inputBuffer.getChannelData(0);
           // Downsample from context sampleRate (e.g., 44100) to 16000 PCM16LE
           const pcm16 = this.downsampleToPCM16(inputData, this.audioContext!.sampleRate, this.config.sampleRate);
-          const base64 = this.arrayBufferToBase64(pcm16.buffer as ArrayBuffer);
           try {
-            this.ws.send(JSON.stringify({ audio_data: base64 }));
+            // v3 expects raw PCM16LE binary frames over the socket
+            this.ws.send(pcm16.buffer as ArrayBuffer);
           } catch {}
         };
 
@@ -112,38 +112,37 @@ class SpeechToTextService {
     }
   }
 
-  // Set up WebSocket connection to AssemblyAI
-  private setupWebSocketConnection(
+  // Set up WebSocket connection to AssemblyAI (Realtime v3 binary frames)
+  private async setupWebSocketConnection(
     onResult: (result: STTResult) => void,
     onError: (error: Error) => void
-  ): void {
-    const params = new URLSearchParams({
-      sample_rate: String(this.config.sampleRate),
-      format_turns: 'true',
-      end_of_turn_confidence_threshold: '0.7',
-      min_end_of_turn_silence_when_confident: '160',
-      max_turn_silence: '2400',
-      token: this.config.apiKey,
-    });
-    const wsUrl = `wss://streaming.assemblyai.com/v3/ws?${params.toString()}`;
-
-    this.ws = new WebSocket(wsUrl);
+  ): Promise<void> {
+    try {
+      const params = new URLSearchParams({
+        sample_rate: String(this.config.sampleRate),
+        format_turns: 'true',
+        end_of_turn_confidence_threshold: '0.7',
+        min_end_of_turn_silence_when_confident: '160',
+        max_turn_silence: '2400',
+        token: this.config.apiKey,
+      });
+      const wsUrl = `wss://streaming.assemblyai.com/v3/ws?${params.toString()}`;
+      this.ws = new WebSocket(wsUrl);
+    } catch (e) {
+      onError(e as Error);
+      return;
+    }
 
     this.ws.onopen = () => {
-      console.log('WebSocket connection opened');
+      console.log('WebSocket connection opened (Realtime v2)');
     };
 
     this.ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        
+        // v3 emits Begin / Turn / Termination
         if (data.type === 'Turn') {
-          const result: STTResult = {
-            text: data.transcript || '',
-            confidence: data.confidence || 0,
-            isFinal: data.turn_is_formatted || false
-          };
-          onResult(result);
+          onResult({ text: data.transcript || '', confidence: data.confidence || 0, isFinal: !!data.turn_is_formatted });
         } else if (data.type === 'Begin') {
           console.log('STT session started:', data.id);
         } else if (data.type === 'Termination') {
@@ -166,6 +165,8 @@ class SpeechToTextService {
       }
     };
   }
+
+  // Note: v3 path uses API key directly in query for dev. For production, mint ephemeral tokens server-side.
 
   // Utilities: audio conversion and base64 encoding
   private downsampleToPCM16(input: Float32Array, inputRate: number, outRate: number): Int16Array {
