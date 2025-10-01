@@ -218,6 +218,28 @@ const InterviewQuestion = () => {
           for (let i = 0; i < questions.length; i++) {
             const q = questions[i];
             try {
+              // Rule-based penalty for blank / "I don't know" style answers before AI call
+              const rawAns = (q.answer || '').trim().toLowerCase();
+              const isNoAnswer = rawAns.length === 0;
+              const isIDK = /^(i don['’]t know|dont know|no idea|not sure|skip | pass | no comment)$/i.test(rawAns) ||
+                rawAns.includes("don't know") || rawAns.includes('dont know') || rawAns.includes('no idea');
+
+              if (isNoAnswer || isIDK) {
+                const penaltyScore = 5; // hard cap for no/IDK answers
+                let aiAnswerText = '';
+                try {
+                  // Still fetch a concise correct answer for learning
+                  const evalForAnswer = await aiService.evaluateAnswer(q.text, q.answer || '', q.difficulty);
+                  aiAnswerText = evalForAnswer.conciseAnswer || '';
+                  if (aiAnswerText) {
+                    dispatch(setQuestionAIAnswer({ questionIndex: i, aiAnswer: aiAnswerText }));
+                  }
+                } catch {}
+                evaluations.push({ score: penaltyScore, feedback: isNoAnswer ? 'No answer provided.' : 'Candidate indicated they do not know the answer.', aiAnswer: aiAnswerText });
+                dispatch(setQuestionScore({ questionIndex: i, score: penaltyScore }));
+                continue;
+              }
+
               const evalResult = await aiService.evaluateAnswer(q.text, q.answer || '', q.difficulty);
               const conciseAIAnswer = evalResult.conciseAnswer || '';
               evaluations.push({ score: evalResult.score, feedback: evalResult.feedback, aiAnswer: conciseAIAnswer });
@@ -226,8 +248,9 @@ const InterviewQuestion = () => {
                 dispatch(setQuestionAIAnswer({ questionIndex: i, aiAnswer: conciseAIAnswer }));
               }
             } catch (e) {
-              const fallback = Math.floor(Math.random() * 40) + 60;
-              evaluations.push({ score: fallback, feedback: 'Feedback unavailable.', aiAnswer: '' });
+              // Conservative fallback
+              const fallback = 0;
+              evaluations.push({ score: fallback, feedback: 'Evaluation unavailable.', aiAnswer: '' });
               dispatch(setQuestionScore({ questionIndex: i, score: fallback }));
             }
           }
@@ -251,21 +274,19 @@ const InterviewQuestion = () => {
             questions.map((q, i) => ({ answer: q.answer, score: evaluations[i]?.score || q.score || 0 }))
           );
 
-          // Normalize scores that may come as 0-10 to 0-100
-          const normalizedEvaluations = evaluations.map((e) => {
-            const score = e.score <= 10 && e.score > 0 ? e.score * 10 : e.score;
-            return { ...e, score: Math.round(score) };
-          });
-
-          const totalScore = Math.round(
-            normalizedEvaluations.reduce((sum, e) => sum + e.score, 0) / Math.max(1, questions.length)
+          // Weighted final score: 80% interview average, 20% resume score
+          const interviewAverage = Math.round(
+            evaluations.reduce((sum, e) => sum + e.score, 0) / Math.max(1, questions.length)
           );
+          const RESUME_WEIGHT = 0.2;
+          const resumeScore = Math.max(0, Math.min(100, currentCandidate?.resumeScore || 0));
+          const weightedFinal = Math.round(interviewAverage * (1 - RESUME_WEIGHT) + resumeScore * RESUME_WEIGHT);
 
-          dispatch(setFinalResults({ score: totalScore, summary: finalSummary }));
+          dispatch(setFinalResults({ score: weightedFinal, summary: finalSummary }));
 
           dispatch(addChatMessage({
             type: 'ai',
-            content: `Interview completed! Your final score is ${totalScore}%. ${finalSummary}`,
+            content: `Interview completed! Your final score is ${weightedFinal}%. ${finalSummary}`,
           }));
 
           // Mark the interview as completed to prevent re-asking
@@ -273,16 +294,15 @@ const InterviewQuestion = () => {
           setIsEvaluating(false);
         } catch (error) {
           console.error('Final summary error:', error);
-          const totalScore = Math.round(
-            questions.reduce((sum, q) => {
-              const raw = q.score || 0;
-              const normalized = raw <= 10 && raw > 0 ? raw * 10 : raw;
-              return sum + normalized;
-            }, 0) / Math.max(1, questions.length)
+          const interviewAverageOnError = Math.round(
+            questions.reduce((sum, q) => sum + (q.score || 0), 0) / Math.max(1, questions.length)
           );
-          const summary = `Completed ${questions.length} questions with an average score of ${totalScore}%.`;
+          const RESUME_WEIGHT_ERR = 0.2;
+          const resumeScoreErr = Math.max(0, Math.min(100, currentCandidate?.resumeScore || 0));
+          const weightedFinalErr = Math.round(interviewAverageOnError * (1 - RESUME_WEIGHT_ERR) + resumeScoreErr * RESUME_WEIGHT_ERR);
+          const summary = `Completed ${questions.length} questions with an average score of ${weightedFinalErr}%.`;
 
-          dispatch(setFinalResults({ score: totalScore, summary }));
+          dispatch(setFinalResults({ score: weightedFinalErr, summary }));
 
           dispatch(addChatMessage({
             type: 'ai',
@@ -332,6 +352,26 @@ const InterviewQuestion = () => {
           for (let i = 0; i < questions.length; i++) {
             const q = questions[i];
             try {
+              const rawAns = (q.answer || '').trim().toLowerCase();
+              const isNoAnswer = rawAns.length === 0;
+              const isIDK = /^(i don['’]t know|dont know|no idea|not sure|skip| pass | no comment)$/i.test(rawAns) ||
+                rawAns.includes("don't know") || rawAns.includes('dont know') || rawAns.includes('no idea');
+
+              if (isNoAnswer || isIDK) {
+                const penaltyScore = 5;
+                let aiAnswerText = '';
+                try {
+                  const evalForAnswer = await aiService.evaluateAnswer(q.text, q.answer || '', q.difficulty);
+                  aiAnswerText = evalForAnswer.conciseAnswer || '';
+                  if (aiAnswerText) {
+                    dispatch(setQuestionAIAnswer({ questionIndex: i, aiAnswer: aiAnswerText }));
+                  }
+                } catch {}
+                evaluations.push({ score: penaltyScore, feedback: isNoAnswer ? 'No answer provided.' : 'Candidate indicated they do not know the answer.', aiAnswer: aiAnswerText });
+                dispatch(setQuestionScore({ questionIndex: i, score: penaltyScore }));
+                continue;
+              }
+
               const evalResult = await aiService.evaluateAnswer(q.text, q.answer || '', q.difficulty);
               const conciseAIAnswer = evalResult.conciseAnswer || '';
               evaluations.push({ score: evalResult.score, feedback: evalResult.feedback, aiAnswer: conciseAIAnswer });
@@ -340,8 +380,8 @@ const InterviewQuestion = () => {
                 dispatch(setQuestionAIAnswer({ questionIndex: i, aiAnswer: conciseAIAnswer }));
               }
             } catch (e) {
-              const fallback = Math.floor(Math.random() * 40) + 60;
-              evaluations.push({ score: fallback, feedback: 'Feedback unavailable.', aiAnswer: '' });
+              const fallback = 0;
+              evaluations.push({ score: fallback, feedback: 'Evaluation unavailable.', aiAnswer: '' });
               dispatch(setQuestionScore({ questionIndex: i, score: fallback }));
             }
           }
@@ -363,35 +403,32 @@ const InterviewQuestion = () => {
             questions.map((q, i) => ({ answer: q.answer, score: evaluations[i]?.score || q.score || 0 }))
           );
 
-          const normalizedEvaluations = evaluations.map((e) => {
-            const score = e.score <= 10 && e.score > 0 ? e.score * 10 : e.score;
-            return { ...e, score: Math.round(score) };
-          });
-
-          const totalScore = Math.round(
-            normalizedEvaluations.reduce((sum, e) => sum + e.score, 0) / Math.max(1, questions.length)
+          const interviewAverage2 = Math.round(
+            evaluations.reduce((sum, e) => sum + e.score, 0) / Math.max(1, questions.length)
           );
+          const RESUME_WEIGHT2 = 0.2;
+          const resumeScore2 = Math.max(0, Math.min(100, currentCandidate?.resumeScore || 0));
+          const weightedFinal2 = Math.round(interviewAverage2 * (1 - RESUME_WEIGHT2) + resumeScore2 * RESUME_WEIGHT2);
 
-          dispatch(setFinalResults({ score: totalScore, summary: finalSummary }));
+          dispatch(setFinalResults({ score: weightedFinal2, summary: finalSummary }));
           dispatch(addChatMessage({
             type: 'ai',
-            content: `Interview completed! Your final score is ${totalScore}%. ${finalSummary}`,
+            content: `Interview completed! Your final score is ${weightedFinal2}%. ${finalSummary}`,
           }));
 
           dispatch(setStage('completed'));
           setIsEvaluating(false);
         } catch (error) {
           console.error('Final summary error:', error);
-          const totalScore = Math.round(
-            questions.reduce((sum, q) => {
-              const raw = q.score || 0;
-              const normalized = raw <= 10 && raw > 0 ? raw * 10 : raw;
-              return sum + normalized;
-            }, 0) / Math.max(1, questions.length)
+          const interviewAverage2Err = Math.round(
+            questions.reduce((sum, q) => sum + (q.score || 0), 0) / Math.max(1, questions.length)
           );
-          const summary = `Completed ${questions.length} questions with an average score of ${totalScore}%.`;
+          const RESUME_WEIGHT2_ERR = 0.2;
+          const resumeScore2Err = Math.max(0, Math.min(100, currentCandidate?.resumeScore || 0));
+          const weightedFinal2Err = Math.round(interviewAverage2Err * (1 - RESUME_WEIGHT2_ERR) + resumeScore2Err * RESUME_WEIGHT2_ERR);
+          const summary = `Completed ${questions.length} questions with an average score of ${weightedFinal2Err}%.`;
 
-          dispatch(setFinalResults({ score: totalScore, summary }));
+          dispatch(setFinalResults({ score: weightedFinal2Err, summary }));
           dispatch(addChatMessage({
             type: 'ai',
             content: `Interview completed! Your final score is ${totalScore}%. ${summary}`,

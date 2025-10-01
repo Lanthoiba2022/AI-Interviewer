@@ -19,7 +19,11 @@ export class AnswerEvaluator extends BaseAIService {
       const completion = await this.puter.ai.chat([
         {
           role: 'user',
-          content: `Please evaluate this interview answer for a Full Stack Developer position.
+          content: `Please evaluate this interview answer for a Full Stack Developer position. Use a strict rubric:
+If the answer is blank, "I don't know", "no idea", or similar, assign a score between 0 and 10.
+If the answer is partially correct with gaps, assign 40–60 depending on completeness.
+If the answer is largely correct but missing minor details, assign 70–85.
+Only assign 90+ if the answer is fully correct, clearly reasoned, and aligned to difficulty level.
 
 Question (${difficulty}): ${question}
 Answer: ${answer}
@@ -31,6 +35,7 @@ Provide a detailed evaluation with:
 4. 2-3 areas for improvement
 5. A concise correct answer (1-3 sentences) suitable for this difficulty level
 
+Always include the corrected/ideal answer regardless of candidate response.
 Return the response in this JSON format:
 {
   "score": 85,

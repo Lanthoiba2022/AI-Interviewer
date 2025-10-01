@@ -57,7 +57,15 @@ const ResumeUpload = () => {
       const analysis = await aiService.analyzeResume(file);
 
       // Store the resume analysis in cache
-      dispatch(setResumeAnalysis(analysis));
+      // Normalize resume score to 0-100 if model returned a 0-10 scale
+      const normalizedAnalysis = {
+        ...analysis,
+        score: (typeof analysis.score === 'number' && analysis.score > 0 && analysis.score <= 10)
+          ? Math.round(analysis.score * 10)
+          : Math.round(analysis.score || 0)
+      };
+
+      dispatch(setResumeAnalysis(normalizedAnalysis));
 
       const candidateInfo = {
         name: analysis.name || '',
@@ -70,10 +78,10 @@ const ResumeUpload = () => {
       if (!candidateInfo.email) missingFields.push('email');
       if (!candidateInfo.phone) missingFields.push('phone');
 
-      const strengthsList = (analysis.strengths || []).map((s: string) => `- ${s}`).join('\n');
-      const weaknessesList = (analysis.weaknesses || []).map((w: string) => `- ${w}`).join('\n');
+      const strengthsList = (normalizedAnalysis.strengths || []).map((s: string) => `- ${s}`).join('\n');
+      const weaknessesList = (normalizedAnalysis.weaknesses || []).map((w: string) => `- ${w}`).join('\n');
       const detailedResumeSummary = [
-        analysis.summary?.trim() || '',
+        normalizedAnalysis.summary?.trim() || '',
         strengthsList ? `\n\nStrengths:\n${strengthsList}` : '',
         weaknessesList ? `\n\nAreas for improvement:\n${weaknessesList}` : '',
       ].join('');
@@ -81,22 +89,22 @@ const ResumeUpload = () => {
       dispatch(setCandidate({
         id: Date.now().toString(),
         ...candidateInfo,
-        resumeText: detailedResumeSummary || analysis.summary,
+        resumeText: detailedResumeSummary || normalizedAnalysis.summary,
         resumeFileName: file.name,
-        resumeScore: analysis.score,
-        resumeStrengths: analysis.strengths,
-        resumeWeaknesses: analysis.weaknesses,
+        resumeScore: normalizedAnalysis.score,
+        resumeStrengths: normalizedAnalysis.strengths,
+        resumeWeaknesses: normalizedAnalysis.weaknesses,
       }));
 
       dispatch(addChatMessage({
         type: 'ai',
-        content: `Resume analysis complete! I found ${analysis.strengths.length} key strengths and identified areas for improvement. Resume score: ${analysis.score}/100.`,
+        content: `Resume analysis complete! I found ${normalizedAnalysis.strengths.length} key strengths and identified areas for improvement. Resume score: ${normalizedAnalysis.score}/100.`,
       }));
 
       // Add the detailed resume analysis summary to chat history
       dispatch(addChatMessage({
         type: 'ai',
-        content: `Detailed Resume Analysis Summary:\n\n${analysis.summary}${strengthsList ? `\n\nStrengths:\n${strengthsList}` : ''}${weaknessesList ? `\n\nAreas for improvement:\n${weaknessesList}` : ''}`,
+        content: `Detailed Resume Analysis Summary:\n\n${normalizedAnalysis.summary}${strengthsList ? `\n\nStrengths:\n${strengthsList}` : ''}${weaknessesList ? `\n\nAreas for improvement:\n${weaknessesList}` : ''}`,
       }));
 
       if (missingFields.length > 0) {
@@ -120,7 +128,7 @@ const ResumeUpload = () => {
       setTimeout(() => {
         toast({
           title: "Resume analyzed successfully",
-          description: `AI analysis complete. Score: ${analysis.score}/100`,
+          description: `AI analysis complete. Score: ${normalizedAnalysis.score}/100`,
         });
       }, 100);
     } catch (error) {
