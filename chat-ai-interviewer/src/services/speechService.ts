@@ -244,6 +244,8 @@ export const speechService = new SpeechToTextService({
 export const useSpeechToText = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [committedTranscript, setCommittedTranscript] = useState('');
+  const [partialTranscript, setPartialTranscript] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [hasValidApiKey, setHasValidApiKey] = useState(speechService.isApiKeyValid());
 
@@ -256,13 +258,26 @@ export const useSpeechToText = () => {
     try {
       setIsRecording(true);
       setIsListening(true);
-      setTranscript('');
+      // Do NOT clear existing transcript; continue appending on top of it
 
       await speechService.startTranscription(
         (result) => {
-          setTranscript(result.text);
           if (result.isFinal) {
+            const clean = (result.text || '').trim();
+            setCommittedTranscript((prev) => {
+              const next = prev ? `${prev} ${clean}` : clean;
+              setTranscript(next);
+              return next;
+            });
+            setPartialTranscript('');
             setIsListening(false);
+          } else {
+            const clean = (result.text || '').trim();
+            setPartialTranscript(clean);
+            setTranscript((prev) => {
+              const base = committedTranscript;
+              return clean ? (base ? `${base} ${clean}` : clean) : base;
+            });
           }
         },
         (error) => {
@@ -286,6 +301,8 @@ export const useSpeechToText = () => {
 
   const resetTranscript = useCallback(() => {
     setTranscript('');
+    setCommittedTranscript('');
+    setPartialTranscript('');
   }, []);
 
   return {
