@@ -52,7 +52,25 @@ export interface InterviewState {
   stage: 'upload' | 'collecting-info' | 'interview' | 'completed';
   resumeAnalysis: ResumeAnalysis | null;
   isResumeAnalysisComplete: boolean;
+  // Enhanced persistence tracking
+  interviewId: string | null;
+  startedAt: number | null;
+  lastActivityAt: number | null;
+  status: 'draft' | 'in-progress' | 'paused' | 'completed';
+  progress: {
+    resumeUploaded: boolean;
+    infoCollected: boolean;
+    questionsGenerated: boolean;
+    interviewStarted: boolean;
+  };
 }
+
+const defaultProgress: InterviewState['progress'] = {
+  resumeUploaded: false,
+  infoCollected: false,
+  questionsGenerated: false,
+  interviewStarted: false,
+};
 
 const initialState: InterviewState = {
   currentCandidate: null,
@@ -66,6 +84,17 @@ const initialState: InterviewState = {
   stage: 'upload',
   resumeAnalysis: null,
   isResumeAnalysisComplete: false,
+  // Enhanced persistence tracking
+  interviewId: null,
+  startedAt: null,
+  lastActivityAt: null,
+  status: 'draft',
+  progress: {
+    resumeUploaded: false,
+    infoCollected: false,
+    questionsGenerated: false,
+    interviewStarted: false,
+  },
 };
 
 const interviewSlice = createSlice({
@@ -78,6 +107,17 @@ const interviewSlice = createSlice({
       } else {
         state.currentCandidate = action.payload as Candidate;
       }
+      // Update info collected progress when essential fields are present
+      if (!state.progress) {
+        state.progress = { ...defaultProgress };
+      }
+      const hasAllInfo = Boolean(
+        state.currentCandidate?.name &&
+        state.currentCandidate?.email &&
+        state.currentCandidate?.phone
+      );
+      state.progress.infoCollected = hasAllInfo;
+      state.lastActivityAt = Date.now();
     },
     setMissingFields: (state, action: PayloadAction<string[]>) => {
       state.missingFields = action.payload;
@@ -94,13 +134,24 @@ const interviewSlice = createSlice({
         ...action.payload,
         timestamp: Date.now(),
       });
+      state.lastActivityAt = Date.now();
     },
     setQuestions: (state, action: PayloadAction<Question[]>) => {
       state.questions = action.payload;
+      if (!state.progress) {
+        state.progress = { ...defaultProgress };
+      }
+      state.progress.questionsGenerated = action.payload.length > 0;
+      state.lastActivityAt = Date.now();
     },
     setResumeAnalysis: (state, action: PayloadAction<ResumeAnalysis>) => {
       state.resumeAnalysis = action.payload;
       state.isResumeAnalysisComplete = true;
+      if (!state.progress) {
+        state.progress = { ...defaultProgress };
+      }
+      state.progress.resumeUploaded = true;
+      state.lastActivityAt = Date.now();
     },
     setResumeAnalysisComplete: (state, action: PayloadAction<boolean>) => {
       state.isResumeAnalysisComplete = action.payload;
@@ -109,6 +160,12 @@ const interviewSlice = createSlice({
       state.isInterviewActive = true;
       state.stage = 'interview';
       state.currentQuestionIndex = 0;
+      state.status = 'in-progress';
+      if (!state.progress) {
+        state.progress = { ...defaultProgress };
+      }
+      state.progress.interviewStarted = true;
+      state.lastActivityAt = Date.now();
     },
     startQuestion: (state) => {
       const currentQuestion = state.questions[state.currentQuestionIndex];
@@ -152,10 +209,77 @@ const interviewSlice = createSlice({
     setFinalResults: (state, action: PayloadAction<{ score: number; summary: string }>) => {
       state.finalScore = action.payload.score;
       state.finalSummary = action.payload.summary;
+      state.status = 'completed';
+      state.lastActivityAt = Date.now();
       // Mirror the AI final summary into current candidate for consistent persistence
       if (state.currentCandidate) {
         state.currentCandidate.resumeText = action.payload.summary;
       }
+    },
+    // Enhanced persistence actions
+    initializeInterview: (state) => {
+      state.interviewId = `interview_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      state.startedAt = Date.now();
+      state.lastActivityAt = Date.now();
+      state.status = 'draft';
+    },
+    loadFromInProgress: (state, action: PayloadAction<{
+      interviewId: string;
+      currentCandidate: Candidate;
+      questions: Question[];
+      currentQuestionIndex: number;
+      status: InterviewState['status'];
+      startedAt: number;
+      lastActivityAt: number;
+      progress: InterviewState['progress'];
+      chatHistory: InterviewState['chatHistory'];
+      stage: InterviewState['stage'];
+      resumeAnalysis?: ResumeAnalysis | null;
+      isResumeAnalysisComplete?: boolean;
+    }>) => {
+      state.interviewId = action.payload.interviewId;
+      state.currentCandidate = action.payload.currentCandidate;
+      state.questions = action.payload.questions;
+      state.currentQuestionIndex = action.payload.currentQuestionIndex;
+      state.status = action.payload.status;
+      state.startedAt = action.payload.startedAt;
+      state.lastActivityAt = action.payload.lastActivityAt;
+      state.progress = action.payload.progress;
+      state.chatHistory = action.payload.chatHistory;
+      state.stage = action.payload.stage;
+      state.isInterviewActive = action.payload.status === 'in-progress';
+      if (typeof action.payload.isResumeAnalysisComplete !== 'undefined') {
+        state.isResumeAnalysisComplete = !!action.payload.isResumeAnalysisComplete;
+      }
+      if (typeof action.payload.resumeAnalysis !== 'undefined') {
+        state.resumeAnalysis = action.payload.resumeAnalysis || null;
+      }
+    },
+    updateProgress: (state, action: PayloadAction<Partial<InterviewState['progress']>>) => {
+      if (!state.progress) {
+        state.progress = { ...defaultProgress };
+      }
+      state.progress = { ...state.progress, ...action.payload };
+      state.lastActivityAt = Date.now();
+    },
+    pauseInterview: (state) => {
+      state.isInterviewActive = false;
+      state.status = 'paused';
+      // Ensure question timer is not running while paused
+      state.isQuestionActive = false;
+      state.lastActivityAt = Date.now();
+    },
+    resumeInterview: (state) => {
+      state.isInterviewActive = true;
+      state.status = 'in-progress';
+      // On resume, do not auto-run the current question timer; let TTS play first
+      state.isQuestionActive = false;
+      state.timeRemaining = 0;
+      state.lastActivityAt = Date.now();
+    },
+    setInterviewStatus: (state, action: PayloadAction<InterviewState['status']>) => {
+      state.status = action.payload;
+      state.lastActivityAt = Date.now();
     },
     resetInterview: () => initialState,
   },
@@ -177,6 +301,13 @@ export const {
   setQuestionAIAnswer,
   nextQuestion,
   setFinalResults,
+  // Enhanced persistence actions
+  initializeInterview,
+  updateProgress,
+  pauseInterview,
+  resumeInterview,
+  setInterviewStatus,
+  loadFromInProgress,
   resetInterview,
 } = interviewSlice.actions;
 
