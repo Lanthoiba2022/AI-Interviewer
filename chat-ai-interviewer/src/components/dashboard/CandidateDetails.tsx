@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, User, Mail, Phone, FileText, Clock, BarChart3 } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, FileText, Clock, BarChart3, Bot, MessageCircle } from 'lucide-react';
 import type { CompletedCandidate } from '@/store/slices/candidatesSlice';
 
 interface CandidateDetailsProps {
@@ -43,6 +43,14 @@ const CandidateDetails = ({ candidate, onBack }: CandidateDetailsProps) => {
     const normalized = raw <= 10 && raw > 0 ? raw * 10 : raw;
     return sum + normalized;
   }, 0) / candidate.questions.length;
+
+  const getPerformanceLevel = (score: number) => {
+    if (score >= 90) return 'Excellent';
+    if (score >= 80) return 'Very Good';
+    if (score >= 70) return 'Good';
+    if (score >= 60) return 'Fair';
+    return 'Needs Improvement';
+  };
 
   return (
     <div className="space-y-6">
@@ -119,10 +127,10 @@ const CandidateDetails = ({ candidate, onBack }: CandidateDetailsProps) => {
         </Card>
         <Card>
           <CardContent className="p-6 text-center">
-            <div className={`text-3xl font-bold ${getScoreColor(averageQuestionScore)}`}>
-              {Math.round(averageQuestionScore)}%
+            <div className="text-3xl font-bold text-foreground">
+              {getPerformanceLevel(candidate.finalScore)}
             </div>
-            <p className="text-sm text-muted-foreground">Avg Question Score</p>
+            <p className="text-sm text-muted-foreground">Performance Level</p>
           </CardContent>
         </Card>
         <Card>
@@ -196,31 +204,48 @@ const CandidateDetails = ({ candidate, onBack }: CandidateDetailsProps) => {
         </CardContent>
       </Card>
 
-      {/* Chat History */}
+      {/* Chat History - Styled like Interview view */}
       <Card>
         <CardHeader>
-          <CardTitle>Interview Chat History</CardTitle>
+          <CardTitle className="flex items-center space-x-2">
+            <MessageCircle className="h-5 w-5" />
+            <span>Interview Chat History</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="max-h-96 overflow-y-auto space-y-3">
-            {candidate.chatHistory.map((message) => (
+          <div className="max-h-96 overflow-y-auto space-y-4">
+            {candidate.chatHistory.map((message, idx) => (
               <div
-                key={message.id}
+                key={`${message.id}-${message.timestamp}-${idx}`}
                 className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] p-3 rounded-lg ${
+                  className={`max-w-[80%] p-4 rounded-lg ${
                     message.type === 'user'
-                      ? 'bg-chat-user text-chat-user-foreground ml-4'
+                      ? 'bg-blue-100 text-blue-900 ml-4'
                       : message.type === 'ai'
-                      ? 'bg-chat-ai text-chat-ai-foreground mr-4'
-                      : 'bg-accent text-accent-foreground mx-4 text-center text-sm'
+                      ? 'bg-gray-100 text-gray-900 mr-4'
+                      : 'bg-yellow-100 text-yellow-900 mx-4 text-center'
                   }`}
                 >
-                  <p className="whitespace-pre-wrap">{message.content}</p>
-                  <p className="text-xs opacity-70 mt-1">
-                    {new Date(message.timestamp).toLocaleTimeString()}
-                  </p>
+                  <div className="flex items-center space-x-2 mb-2">
+                    {message.type === 'user' ? (
+                      <User className="h-4 w-4" />
+                    ) : message.type === 'ai' ? (
+                      <Bot className="h-4 w-4" />
+                    ) : (
+                      <MessageCircle className="h-4 w-4" />
+                    )}
+                    <Badge variant="outline" className="text-xs">
+                      {message.type === 'user' ? 'You' : message.type === 'ai' ? 'AI Interviewer' : 'System'}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(message.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <div className="whitespace-pre-wrap text-sm">
+                    {message.content}
+                  </div>
                 </div>
               </div>
             ))}
