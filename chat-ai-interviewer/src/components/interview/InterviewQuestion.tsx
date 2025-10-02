@@ -559,13 +559,13 @@ const InterviewQuestion = () => {
   }
 
   return (
-    <div className="relative max-w-4xl mx-auto space-y-6">
+    <div className="relative max-w-4xl mx-auto space-y-4 sm:space-y-6 px-4 sm:px-0">
       {/* Header */}
-      <div className="text-center space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <h2 className="text-2xl font-bold text-foreground">Interview in Progress</h2>
-            <Badge variant="outline" className="text-sm">
+      <div className="text-center space-y-3 sm:space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground">Interview in Progress</h2>
+            <Badge variant="outline" className="text-xs sm:text-sm self-start sm:self-auto">
               {currentCandidate?.name}
             </Badge>
           </div>
@@ -573,16 +573,16 @@ const InterviewQuestion = () => {
             variant="destructive"
             size="sm"
             onClick={handleEndInterview}
-            className="flex items-center space-x-2"
+            className="flex items-center space-x-1 sm:space-x-2 self-start sm:self-auto"
           >
-            <X className="h-4 w-4" />
-            <span>Exit</span>
+            <X className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="text-xs sm:text-sm">Exit</span>
           </Button>
         </div>
         
           <div className="max-w-md mx-auto">
             <Progress value={progress} className="h-2" />
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-2">
               {Math.round(progress)}% complete • {questions.filter(q => (q.answer || '').trim().length > 0).length}/{questions.length} answered
             </p>
           </div>
@@ -601,14 +601,14 @@ const InterviewQuestion = () => {
 
       {/* Question Card */}
       <Card className="border-2 border-primary/20">
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
+        <CardHeader className="pb-3 sm:pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-sm sm:text-base">
                 {currentQuestionIndex + 1}
               </div>
               <div>
-                <CardTitle className="text-lg">Question {currentQuestionIndex + 1}</CardTitle>
+                <CardTitle className="text-base sm:text-lg">Question {currentQuestionIndex + 1}</CardTitle>
                 <Badge className={`${getDifficultyColor(currentQuestion.difficulty)} text-xs`}>
                   {currentQuestion.difficulty.toUpperCase()}
                 </Badge>
@@ -617,8 +617,8 @@ const InterviewQuestion = () => {
             
             {isQuestionActive && !isPlayingAudio && (
               <div className={`flex items-center space-x-2 ${timeRemaining <= 10 ? 'text-red-600' : 'text-foreground'}`}>
-                <Clock className="h-5 w-5" />
-                <span className="font-mono font-bold text-lg">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="font-mono font-bold text-base sm:text-lg">
                   {formatTime(timeRemaining)}
                 </span>
               </div>
@@ -626,34 +626,34 @@ const InterviewQuestion = () => {
           </div>
         </CardHeader>
         
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4 sm:space-y-6">
           {/* Question Text */}
-          <div className="p-6 bg-accent/30 rounded-lg">
-            <h3 className="text-lg font-medium mb-2">Question:</h3>
-            <p className="text-foreground text-base leading-relaxed">
+          <div className="p-4 sm:p-6 bg-accent/30 rounded-lg">
+            <h3 className="text-base sm:text-lg font-medium mb-2">Question:</h3>
+            <p className="text-foreground text-sm sm:text-base leading-relaxed">
               {currentQuestion.text}
             </p>
           </div>
 
           {/* Audio Status - removed for final summary; keep only during question reading */}
           {isPlayingAudio && (
-            <div className="flex items-center justify-center space-x-2 text-blue-600 bg-blue-50 p-3 rounded-lg">
-              <Volume2 className="h-4 w-4 animate-pulse" />
-              <span>Reading question aloud...</span>
+            <div className="flex items-center justify-center space-x-2 text-blue-600 bg-blue-50 p-2 sm:p-3 rounded-lg">
+              <Volume2 className="h-3 w-3 sm:h-4 sm:w-4 animate-pulse" />
+              <span className="text-sm sm:text-base">Reading question aloud...</span>
             </div>
           )}
 
           {/* Answer Input */}
           {/* When not active and evaluating (after last submit), show a centered loader */}
           {!isQuestionActive && isEvaluating && (
-            <div className="flex items-center justify-center space-x-2 text-orange-600 bg-orange-50 p-4 rounded-lg">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span className="text-sm">AI is evaluating your answers, please wait...</span>
+            <div className="flex items-center justify-center space-x-2 text-orange-600 bg-orange-50 p-3 sm:p-4 rounded-lg">
+              <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+              <span className="text-xs sm:text-sm">AI is evaluating your answers, please wait...</span>
             </div>
           )}
 
           {isQuestionActive && (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div>
                 <label className="text-sm font-medium text-foreground mb-2 block">
                   Your Answer:
@@ -662,24 +662,27 @@ const InterviewQuestion = () => {
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
                   placeholder="Type your answer here or use voice input..."
-                  className="min-h-32 text-base"
+                  className="min-h-24 sm:min-h-32 text-sm sm:text-base"
                   autoFocus
                 />
               </div>
               
               {/* Voice Controls */}
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
                 <Button
                   type="button"
                   variant={isRecording ? "destructive" : "outline"}
                   size="sm"
                   onClick={isRecording ? stopListening : startListening}
                   disabled={isEvaluating || !hasValidApiKey}
-                  className="flex items-center space-x-2"
+                  className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm"
                 >
-                  {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                  <span>
+                  {isRecording ? <MicOff className="h-3 w-3 sm:h-4 sm:w-4" /> : <Mic className="h-3 w-3 sm:h-4 sm:w-4" />}
+                  <span className="hidden sm:inline">
                     {!hasValidApiKey ? 'Voice Disabled' : isRecording ? 'Stop Recording' : 'Voice Input'}
+                  </span>
+                  <span className="sm:hidden">
+                    {!hasValidApiKey ? 'Disabled' : isRecording ? 'Stop' : 'Voice'}
                   </span>
                 </Button>
                 
@@ -697,7 +700,7 @@ const InterviewQuestion = () => {
               </div>
 
               {/* Status Indicators */}
-              <div className="flex items-center space-x-4 text-sm">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
                 {isRecording && (
                   <div className="flex items-center space-x-2 text-red-600">
                     <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
@@ -712,37 +715,37 @@ const InterviewQuestion = () => {
                 )}
                 {isEvaluating && (
                   <div className="flex items-center space-x-2 text-orange-600">
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                     <span>Evaluating answer...</span>
                   </div>
                 )}
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-between pt-4">
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-3 sm:gap-0 pt-3 sm:pt-4">
                 <Button 
                   variant="outline" 
                   onClick={() => handleSubmit(true)}
-                  className="flex items-center space-x-2"
+                  className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm"
                   disabled={isEvaluating}
                 >
-                  <SkipForward className="h-4 w-4" />
+                  <SkipForward className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span>Skip Question</span>
                 </Button>
                 
                 <Button 
                   onClick={() => handleSubmit(false)}
                   disabled={!answer.trim() || isEvaluating}
-                  className="flex items-center space-x-2"
+                  className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm"
                 >
                   {isEvaluating ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                       <span>Evaluating...</span>
                     </>
                   ) : (
                     <>
-                      <CheckCircle className="h-4 w-4" />
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
                       <span>Submit Answer</span>
                     </>
                   )}

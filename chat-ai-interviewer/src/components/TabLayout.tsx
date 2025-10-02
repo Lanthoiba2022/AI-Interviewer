@@ -49,25 +49,27 @@ const TabLayout = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b border-border bg-card">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between py-4">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-foreground">Crisp</h1>
-              <span className="text-sm text-muted-foreground">AI-Powered Interview Assistant</span>
+        <div className="container mx-auto px-3 sm:px-4">
+          <div className="flex items-center justify-between py-3 sm:py-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground">Crisp</h1>
+              <span className="text-xs sm:text-sm text-muted-foreground">AI-Powered Interview Assistant</span>
             </div>
           </div>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="container mx-auto px-4 py-6">
-        <TabsList className="grid w-full grid-cols-2 mb-8">
-          <TabsTrigger value="interviewee" className="flex items-center space-x-2">
-            <MessageSquare className="h-4 w-4" />
-            <span>Interviewee</span>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+        <TabsList className="grid w-full grid-cols-2 mb-6 sm:mb-8">
+          <TabsTrigger value="interviewee" className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
+            <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Interviewee</span>
+            <span className="sm:hidden">Interviewee</span>
           </TabsTrigger>
-          <TabsTrigger value="interviewer" className="flex items-center space-x-2">
-            <Users className="h-4 w-4" />
-            <span>Interviewer Dashboard</span>
+          <TabsTrigger value="interviewer" className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
+            <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Interviewer Dashboard</span>
+            <span className="sm:hidden">Interviewer</span>
           </TabsTrigger>
         </TabsList>
 
