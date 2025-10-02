@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, Send, SkipForward, Mic, MicOff, Volume2, Loader2, CheckCircle, X } from 'lucide-react';
 import type { Question } from '@/store/slices/interviewSlice';
 import { aiService } from '@/services/aiService';
+import { store } from '@/store/store';
 import { removeInProgressInterview, moveToCompleted } from '@/store/slices/candidatesSlice';
 import { useSpeechToText } from '@/services/speechService';
 
@@ -293,11 +294,15 @@ const InterviewQuestion = () => {
             dispatch(addChatMessage({ type: 'ai', content: `AI Answers (concise):\n${aiAnswersCompact}` }));
           }
 
-          const finalSummary = await aiService.generateFinalSummary(
+          const finalSummaryRaw = await aiService.generateFinalSummary(
             currentCandidate,
             questions,
             questions.map((q, i) => ({ answer: q.answer, score: evaluations[i]?.score || q.score || 0 }))
           );
+          const finalSummary = (finalSummaryRaw || '')
+            .replace(/[\*#`]+/g, '')
+            .replace(/^\s*[-]+\s*/gm, '')
+            .trim();
 
           // Weighted final score: 80% interview average, 20% resume score
           const interviewAverage = Math.round(
@@ -317,15 +322,22 @@ const InterviewQuestion = () => {
           // Mark the interview as completed to prevent re-asking
           dispatch(setStage('completed'));
           if (interviewId && currentCandidate) {
+            const latestState = store.getState();
+            const latestChat = latestState.interview.chatHistory;
+            const questionsWithAI = questions.map((q, i) => ({
+              ...q,
+              score: evaluations[i]?.score ?? q.score ?? 0,
+              aiAnswer: evaluations[i]?.aiAnswer ?? q.aiAnswer,
+            }));
             dispatch(moveToCompleted({
               interviewId,
               completedCandidate: {
                 ...currentCandidate,
-                questions,
+                questions: questionsWithAI,
                 finalScore: weightedFinal,
                 finalSummary: finalSummary,
                 completedAt: Date.now(),
-                chatHistory,
+                chatHistory: latestChat,
               }
             }));
             dispatch(removeInProgressInterview(interviewId));
@@ -341,7 +353,8 @@ const InterviewQuestion = () => {
           const weightedFinalErr = Math.round(interviewAverageOnError * (1 - RESUME_WEIGHT_ERR) + resumeScoreErr * RESUME_WEIGHT_ERR);
           const summary = `Completed ${questions.length} questions with an average score of ${weightedFinalErr}%.`;
 
-          dispatch(setFinalResults({ score: weightedFinalErr, summary }));
+          const summarySanitized = summary.replace(/[\*#`]+/g, '').replace(/^\s*[-]+\s*/gm, '').trim();
+          dispatch(setFinalResults({ score: weightedFinalErr, summary: summarySanitized }));
 
           dispatch(addChatMessage({
             type: 'ai',
@@ -351,15 +364,18 @@ const InterviewQuestion = () => {
           // Ensure stage is set to completed even on error
           dispatch(setStage('completed'));
           if (interviewId && currentCandidate) {
+            const latestState = store.getState();
+            const latestChat = latestState.interview.chatHistory;
+            const questionsWithExisting = questions.map((q) => ({ ...q }));
             dispatch(moveToCompleted({
               interviewId,
               completedCandidate: {
                 ...currentCandidate,
-                questions,
+                questions: questionsWithExisting,
                 finalScore: weightedFinalErr,
-                finalSummary: summary,
+                finalSummary: summarySanitized,
                 completedAt: Date.now(),
-                chatHistory,
+                chatHistory: latestChat,
               }
             }));
             dispatch(removeInProgressInterview(interviewId));
@@ -452,11 +468,15 @@ const InterviewQuestion = () => {
             dispatch(addChatMessage({ type: 'ai', content: `AI Answers (concise):\n${aiAnswersCompact}` }));
           }
 
-          const finalSummary = await aiService.generateFinalSummary(
+          const finalSummaryRaw = await aiService.generateFinalSummary(
             currentCandidate,
             questions,
             questions.map((q, i) => ({ answer: q.answer, score: evaluations[i]?.score || q.score || 0 }))
           );
+          const finalSummary = (finalSummaryRaw || '')
+            .replace(/[\*#`]+/g, '')
+            .replace(/^\s*[-]+\s*/gm, '')
+            .trim();
 
           const interviewAverage2 = Math.round(
             evaluations.reduce((sum, e) => sum + e.score, 0) / Math.max(1, questions.length)
@@ -473,15 +493,22 @@ const InterviewQuestion = () => {
 
           dispatch(setStage('completed'));
           if (interviewId && currentCandidate) {
+            const latestState = store.getState();
+            const latestChat = latestState.interview.chatHistory;
+            const questionsWithAI = questions.map((q, i) => ({
+              ...q,
+              score: evaluations[i]?.score ?? q.score ?? 0,
+              aiAnswer: evaluations[i]?.aiAnswer ?? q.aiAnswer,
+            }));
             dispatch(moveToCompleted({
               interviewId,
               completedCandidate: {
                 ...currentCandidate,
-                questions,
+                questions: questionsWithAI,
                 finalScore: weightedFinal2,
                 finalSummary: finalSummary,
                 completedAt: Date.now(),
-                chatHistory,
+                chatHistory: latestChat,
               }
             }));
             dispatch(removeInProgressInterview(interviewId));
@@ -497,22 +524,26 @@ const InterviewQuestion = () => {
           const weightedFinal2Err = Math.round(interviewAverage2Err * (1 - RESUME_WEIGHT2_ERR) + resumeScore2Err * RESUME_WEIGHT2_ERR);
           const summary = `Completed ${questions.length} questions with an average score of ${weightedFinal2Err}%.`;
 
-          dispatch(setFinalResults({ score: weightedFinal2Err, summary }));
+          const summarySanitized2 = summary.replace(/[\*#`]+/g, '').replace(/^\s*[-]+\s*/gm, '').trim();
+          dispatch(setFinalResults({ score: weightedFinal2Err, summary: summarySanitized2 }));
           dispatch(addChatMessage({
             type: 'ai',
             content: `Interview completed! Your final score is ${weightedFinal2Err}%. ${summary}`,
           }));
           dispatch(setStage('completed'));
           if (interviewId && currentCandidate) {
+            const latestState = store.getState();
+            const latestChat = latestState.interview.chatHistory;
+            const questionsWithExisting2 = questions.map((q) => ({ ...q }));
             dispatch(moveToCompleted({
               interviewId,
               completedCandidate: {
                 ...currentCandidate,
-                questions,
+                questions: questionsWithExisting2,
                 finalScore: weightedFinal2Err,
-                finalSummary: summary,
+                finalSummary: summarySanitized2,
                 completedAt: Date.now(),
-                chatHistory,
+                chatHistory: latestChat,
               }
             }));
             dispatch(removeInProgressInterview(interviewId));
