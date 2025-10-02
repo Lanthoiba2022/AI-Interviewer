@@ -24,6 +24,7 @@ const InterviewComplete = () => {
     chatHistory,
     interviewId
   } = useSelector((state: RootState) => state.interview);
+  const completedCandidates = useSelector((state: RootState) => state.candidates.completed || []);
 
   const handleSaveResults = async () => {
     // Request persistent storage as part of a user gesture (higher grant chance)
@@ -68,7 +69,11 @@ const InterviewComplete = () => {
       console.warn('Failed to save candidate to IndexedDB:', err);
     }
 
-    dispatch(addCompletedCandidate(candidateRecord));
+    // Avoid duplicating in Redux: only add if not already completed
+    const alreadyCompleted = completedCandidates.some(c => c.id === candidateRecord.id);
+    if (!alreadyCompleted) {
+      dispatch(addCompletedCandidate(candidateRecord));
+    }
 
     toast({
       title: "Results saved",
