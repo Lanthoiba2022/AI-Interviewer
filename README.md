@@ -85,104 +85,23 @@ AI-Interviewer is a sophisticated web application that revolutionizes the techni
 
 ```mermaid
 graph TB
-    subgraph "Frontend Layer"
-        A[React 18.3.1 App] --> B[TabLayout Component]
-        B --> C[IntervieweeTab]
-        B --> D[InterviewerTab]
-        
-        C --> E[ResumeUpload]
-        C --> F[InfoCollection]
-        C --> G[InterviewChat]
-        C --> H[InterviewQuestion]
-        C --> I[InterviewComplete]
-        C --> J[WelcomeBack]
-        C --> K[InterviewChatHistory]
-        
-        D --> L[CandidateDetails]
-        D --> M[Dashboard Components]
-    end
+    A[User Interface] --> B[React Components]
+    B --> C[Redux Store]
+    C --> D[IndexedDB]
     
-    subgraph "State Management"
-        N[Redux Store] --> O[interviewSlice]
-        N --> P[candidatesSlice]
-        O --> Q[Redux Persist]
-        P --> Q
-        Q --> R[IndexedDB Storage]
-    end
+    B --> E[AI Services]
+    E --> F[Resume Analyzer]
+    E --> G[Question Generator]
+    E --> H[Answer Evaluator]
+    E --> I[Interview Summary]
     
-    subgraph "AI Services Layer"
-        S[BaseAIService] --> T[ResumeAnalyzer]
-        S --> U[QuestionGenerator]
-        S --> V[AnswerEvaluator]
-        S --> W[InterviewSummary]
-        S --> X[TTSService]
-        
-        T --> Y[Puter AI CDN]
-        U --> Y
-        V --> Y
-        W --> Y
-        X --> Y
-    end
+    B --> J[Speech Services]
+    J --> K[AssemblyAI API]
+    J --> L[Text-to-Speech]
     
-    subgraph "Speech Services"
-        Z[SpeechToTextService] --> AA[AssemblyAI WebSocket]
-        Z --> BB[Web Speech API]
-        AA --> CC[Real-time Transcription]
-        BB --> DD[Browser STT Fallback]
-    end
-    
-    subgraph "Data Persistence"
-        R --> EE[InterviewDB Database]
-        EE --> FF[candidates Store]
-        EE --> GG[sessions Store]
-        FF --> HH[Chat History]
-        FF --> II[Questions Data]
-        FF --> JJ[Final Scores]
-    end
-    
-    subgraph "External APIs"
-        Y --> KK[Puter AI Services]
-        AA --> LL[AssemblyAI Realtime API]
-        MM[File Processing] --> NN[PDF-Parse]
-    end
-    
-    subgraph "UI Components"
-        OO[shadcn/ui Components]
-        PP[Radix UI Primitives]
-        QQ[Tailwind CSS]
-        RR[Lucide Icons]
-    end
-    
-    subgraph "Additional Services"
-        SS[ApiKeyValidator]
-        TT[indexedDBService]
-        UU[aiService Orchestrator]
-    end
-    
-    %% Connections
-    A --> N
-    E --> T
-    F --> T
-    G --> U
-    H --> V
-    I --> W
-    H --> Z
-    F --> Z
-    N --> EE
-    A --> OO
-    OO --> PP
-    OO --> QQ
-    OO --> RR
-    E --> MM
-    G --> X
-    H --> X
-    A --> SS
-    N --> TT
-    T --> UU
-    U --> UU
-    V --> UU
-    W --> UU
-    X --> UU
+    C --> M[Persistence Layer]
+    M --> N[Redux Persist]
+    M --> O[IndexedDB Storage]
 ```
 
 ---
