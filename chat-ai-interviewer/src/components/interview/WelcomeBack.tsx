@@ -1,6 +1,6 @@
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store/store';
-import { resetInterview, startInterview, setStage, pauseInterview, resumeInterview } from '@/store/slices/interviewSlice';
+import { resetInterview, startInterview, setStage, pauseInterview, resumeInterview, markFirstVisitComplete } from '@/store/slices/interviewSlice';
 import { saveInProgressInterview } from '@/store/slices/candidatesSlice';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,8 +26,39 @@ const WelcomeBack = () => {
     status,
     progress,
     chatHistory,
-    resumeAnalysis
+    resumeAnalysis,
+    firstVisit
   } = useSelector((state: RootState) => state.interview);
+
+  // Mark first visit as complete when user continues the interview
+  const handleContinue = () => {
+    console.log('WelcomeBack handleContinue - firstVisit:', firstVisit, 'candidate:', currentCandidate?.name);
+    if (firstVisit) {
+      dispatch(markFirstVisitComplete());
+    }
+    
+    console.log('Continue interview clicked, current state:', { stage, questions: questions.length, currentQuestionIndex, isResumeAnalysisComplete });
+    
+    // If we already have questions, just set stage and resume (question timer will not auto-start)
+    if (questions.length > 0) {
+      dispatch(setStage('interview'));
+      dispatch(resumeInterview());
+      return;
+    }
+    
+    // If we're in interview stage but no questions, generate them
+    if (stage === 'interview' && questions.length === 0) {
+      console.log('No questions found, starting interview to generate questions');
+      dispatch(startInterview());
+    } else if (stage === 'collecting-info') {
+      console.log('Still collecting info, transitioning to interview stage');
+      dispatch(setStage('interview'));
+      dispatch(startInterview());
+    } else {
+      console.log('Resuming interview from saved progress');
+      dispatch(resumeInterview());
+    }
+  };
 
   // Auto-save current interview state to in-progress list
   useEffect(() => {
@@ -51,29 +82,6 @@ const WelcomeBack = () => {
     }
   }, [currentCandidate, interviewId, questions, currentQuestionIndex, status, startedAt, lastActivityAt, progress, stage, resumeAnalysis, isResumeAnalysisComplete, chatHistory, dispatch]);
 
-  const handleContinue = () => {
-    console.log('Continue interview clicked, current state:', { stage, questions: questions.length, currentQuestionIndex, isResumeAnalysisComplete });
-    
-    // If we already have questions, just set stage and resume (question timer will not auto-start)
-    if (questions.length > 0) {
-      dispatch(setStage('interview'));
-      dispatch(resumeInterview());
-      return;
-    }
-    
-    // If we're in interview stage but no questions, generate them
-    if (stage === 'interview' && questions.length === 0) {
-      console.log('No questions found, starting interview to generate questions');
-      dispatch(startInterview());
-    } else if (stage === 'collecting-info') {
-      console.log('Still collecting info, transitioning to interview stage');
-      dispatch(setStage('interview'));
-      dispatch(startInterview());
-    } else {
-      console.log('Resuming interview from saved progress');
-      dispatch(resumeInterview());
-    }
-  };
 
   const handleStartOver = () => {
     dispatch(resetInterview());
@@ -148,10 +156,16 @@ const WelcomeBack = () => {
             <MessageSquare className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            {currentCandidate?.name ? `Welcome Back, ${currentCandidate.name}!` : 'Welcome Back!'}
+            {firstVisit 
+              ? (currentCandidate?.name ? `Welcome, ${currentCandidate.name}!` : 'Welcome!')
+              : (currentCandidate?.name ? `Welcome Back, ${currentCandidate.name}!` : 'Welcome Back!')
+            }
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            You have an interview session in progress. Your progress is automatically saved and you can continue where you left off.
+            {firstVisit 
+              ? 'Your interview session has been created. Please continue the interview to proceed.'
+              : 'You have an interview session in progress. Your progress is automatically saved and you can continue where you left off.'
+            }
           </p>
         </div>
 

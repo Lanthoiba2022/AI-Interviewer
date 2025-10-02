@@ -143,10 +143,10 @@ const InterviewerTab = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-foreground">Candidates Information</h2>
         <div className="flex items-center space-x-4">
-          <Badge variant="secondary" className="text-lg px-3 py-1 border border-gray-400 dark:border-gray-600">
+          <Badge variant="secondary" className="text-lg px-3 py-1 border border-gray-800 dark:border-gray-600">
             {completedList.length} Completed
           </Badge>
-          <Badge variant="outline" className="text-lg px-3 py-1 border border-gray-400 dark:border-gray-600">
+          <Badge variant="outline" className="text-lg px-3 py-1 border border-gray-800 dark:border-gray-600">
             {inProgressList.length} In Progress
           </Badge>
         </div>
