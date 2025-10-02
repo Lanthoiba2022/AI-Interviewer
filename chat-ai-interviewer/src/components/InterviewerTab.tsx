@@ -143,10 +143,10 @@ const InterviewerTab = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-foreground">Candidates Information</h2>
         <div className="flex items-center space-x-4">
-          <Badge variant="secondary" className="text-lg px-3 py-1">
+          <Badge variant="secondary" className="text-lg px-3 py-1 border border-gray-800 dark:border-gray-600">
             {completedList.length} Completed
           </Badge>
-          <Badge variant="outline" className="text-lg px-3 py-1">
+          <Badge variant="outline" className="text-lg px-3 py-1 border border-gray-800 dark:border-gray-600">
             {inProgressList.length} In Progress
           </Badge>
         </div>
@@ -160,12 +160,12 @@ const InterviewerTab = () => {
             placeholder="Search candidates..."
             value={searchTerm}
             onChange={(e) => dispatch(setSearchTerm(e.target.value))}
-            className="pl-10"
+            className="pl-10 border border-gray-400 dark:border-gray-600 focus-visible:ring-2 focus-visible:ring-blue-500"
           />
         </div>
         
         <Select value={sortBy} onValueChange={(value: any) => dispatch(setSortBy(value))}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-40 border border-gray-400 dark:border-gray-600 focus-visible:ring-2 focus-visible:ring-blue-500">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -179,6 +179,7 @@ const InterviewerTab = () => {
         <Button
           variant="outline"
           size="sm"
+          className="border border-gray-400 dark:border-gray-600 hover:border-gray-600 dark:hover:border-gray-500"
           onClick={() => dispatch(setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'))}
         >
           <ArrowUpDown className="h-4 w-4 mr-2" />

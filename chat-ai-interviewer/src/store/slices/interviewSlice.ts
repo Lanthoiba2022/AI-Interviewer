@@ -57,6 +57,7 @@ export interface InterviewState {
   startedAt: number | null;
   lastActivityAt: number | null;
   status: 'draft' | 'in-progress' | 'paused' | 'completed';
+  firstVisit: boolean; // Track if this is the first time seeing this interview session
   progress: {
     resumeUploaded: boolean;
     infoCollected: boolean;
@@ -89,6 +90,7 @@ const initialState: InterviewState = {
   startedAt: null,
   lastActivityAt: null,
   status: 'draft',
+  firstVisit: true, // Default to true for new sessions
   progress: {
     resumeUploaded: false,
     infoCollected: false,
@@ -222,6 +224,7 @@ const interviewSlice = createSlice({
       state.startedAt = Date.now();
       state.lastActivityAt = Date.now();
       state.status = 'draft';
+      state.firstVisit = true; // Ensure firstVisit is true for new sessions
     },
     loadFromInProgress: (state, action: PayloadAction<{
       interviewId: string;
@@ -248,6 +251,7 @@ const interviewSlice = createSlice({
       state.chatHistory = action.payload.chatHistory;
       state.stage = action.payload.stage;
       state.isInterviewActive = action.payload.status === 'in-progress';
+      state.firstVisit = false; // This is a resumed session, not first visit
       if (typeof action.payload.isResumeAnalysisComplete !== 'undefined') {
         state.isResumeAnalysisComplete = !!action.payload.isResumeAnalysisComplete;
       }
@@ -281,6 +285,9 @@ const interviewSlice = createSlice({
       state.status = action.payload;
       state.lastActivityAt = Date.now();
     },
+    markFirstVisitComplete: (state) => {
+      state.firstVisit = false;
+    },
     resetInterview: () => initialState,
   },
 });
@@ -308,6 +315,7 @@ export const {
   resumeInterview,
   setInterviewStatus,
   loadFromInProgress,
+  markFirstVisitComplete,
   resetInterview,
 } = interviewSlice.actions;
 
