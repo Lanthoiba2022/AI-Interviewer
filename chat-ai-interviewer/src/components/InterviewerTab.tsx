@@ -139,21 +139,21 @@ const InterviewerTab = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-foreground">Candidates Information</h2>
-        <div className="flex items-center space-x-4">
-          <Badge variant="secondary" className="text-lg px-3 py-1 border border-gray-800 dark:border-gray-600">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground">Candidates Information</h2>
+        <div className="flex items-center space-x-2 sm:space-x-4">
+          <Badge variant="secondary" className="text-sm sm:text-lg px-2 sm:px-3 py-1 border border-gray-800 dark:border-gray-600">
             {completedList.length} Completed
           </Badge>
-          <Badge variant="outline" className="text-lg px-3 py-1 border border-gray-800 dark:border-gray-600">
+          <Badge variant="outline" className="text-sm sm:text-lg px-2 sm:px-3 py-1 border border-gray-800 dark:border-gray-600">
             {inProgressList.length} In Progress
           </Badge>
         </div>
       </div>
 
       {/* Search and Sort Controls */}
-      <div className="flex items-center space-x-4">
+      <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
@@ -164,39 +164,44 @@ const InterviewerTab = () => {
           />
         </div>
         
-        <Select value={sortBy} onValueChange={(value: any) => dispatch(setSortBy(value))}>
-          <SelectTrigger className="w-40 border border-gray-400 dark:border-gray-600 focus-visible:ring-2 focus-visible:ring-blue-500">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="score">Score</SelectItem>
-            <SelectItem value="name">Name</SelectItem>
-            <SelectItem value="completedAt">Date</SelectItem>
-            <SelectItem value="lastActivityAt">Last Activity</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center space-x-2 sm:space-x-4">
+          <Select value={sortBy} onValueChange={(value: any) => dispatch(setSortBy(value))}>
+            <SelectTrigger className="w-32 sm:w-40 border border-gray-400 dark:border-gray-600 focus-visible:ring-2 focus-visible:ring-blue-500">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="score">Score</SelectItem>
+              <SelectItem value="name">Name</SelectItem>
+              <SelectItem value="completedAt">Date</SelectItem>
+              <SelectItem value="lastActivityAt">Last Activity</SelectItem>
+            </SelectContent>
+          </Select>
 
-        <Button
-          variant="outline"
-          size="sm"
-          className="border border-gray-400 dark:border-gray-600 hover:border-gray-600 dark:hover:border-gray-500"
-          onClick={() => dispatch(setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'))}
-        >
-          <ArrowUpDown className="h-4 w-4 mr-2" />
-          {sortOrder === 'asc' ? 'Ascending' : 'Descending'}
-        </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border border-gray-400 dark:border-gray-600 hover:border-gray-600 dark:hover:border-gray-500"
+            onClick={() => dispatch(setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'))}
+          >
+            <ArrowUpDown className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">{sortOrder === 'asc' ? 'Ascending' : 'Descending'}</span>
+            <span className="sm:hidden">{sortOrder === 'asc' ? 'Asc' : 'Desc'}</span>
+          </Button>
+        </div>
       </div>
 
       {/* Tabs for Completed and In Progress */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="completed" className="flex items-center space-x-2">
-            <MessageSquare className="h-4 w-4" />
-            <span>Completed ({completedList.length})</span>
+          <TabsTrigger value="completed" className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
+            <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Completed ({completedList.length})</span>
+            <span className="sm:hidden">Completed ({completedList.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="in-progress" className="flex items-center space-x-2">
-            <Clock className="h-4 w-4" />
-            <span>In Progress ({inProgressList.length})</span>
+          <TabsTrigger value="in-progress" className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
+            <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">In Progress ({inProgressList.length})</span>
+            <span className="sm:hidden">In Progress ({inProgressList.length})</span>
           </TabsTrigger>
         </TabsList>
 
